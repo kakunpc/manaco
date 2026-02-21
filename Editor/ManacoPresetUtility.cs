@@ -37,7 +37,8 @@ namespace com.kakunvr.manaco.Editor
             }
 
             string defaultName = $"{preset.avatarName}_EyePreset.asset";
-            string path = EditorUtility.SaveFilePanelInProject("Save Avatar Preset", defaultName, "asset", "Save preset to Presets folder");
+            string path = EditorUtility.SaveFilePanelInProject(
+                ManacoLocale.T("Preset.SaveTitle"), defaultName, "asset", "");
 
             if (string.IsNullOrEmpty(path)) return;
 

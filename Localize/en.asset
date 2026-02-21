@@ -1,0 +1,106 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5bb23a62e8d188458bce6697b3c2102, type: 3}
+  m_Name: en
+  m_EditorClassIdentifier: 
+  languageName: English
+  languageCode: en
+  entries:
+  - key: Label.AvatarPreset
+    value: Avatar Preset
+  - key: Label.CustomMaterial
+    value: Custom Material
+  - key: Label.AdvancedSettings
+    value: Advanced Settings
+  - key: Label.EyeType
+    value: Eye Type
+  - key: Label.Renderer
+    value: Renderer
+  - key: Label.MaterialSlot
+    value: Material Slot
+  - key: Label.Material
+    value: Material
+  - key: Label.Resolution
+    value: Resolution
+  - key: Prompt.SelectPreset
+    value: --- Select and Apply Preset ---
+  - key: Prompt.SelectMaterial
+    value: --- Select and Apply Material ---
+  - key: Prompt.SelectAvatarPreset
+    value: --- Select Avatar Preset ---
+  - key: Prompt.SelectMatPreset
+    value: --- Select Material Preset ---
+  - key: Popup.ApplyPreset
+    value: Apply Preset
+  - key: Popup.ApplyMaterial
+    value: Apply Material
+  - key: Popup.AvatarPreset
+    value: Avatar Preset
+  - key: Popup.ShaderPreset
+    value: Shader Preset
+  - key: Button.Refresh
+    value: Refresh
+  - key: Button.Delete
+    value: Delete
+  - key: Button.Add
+    value: + Add
+  - key: Button.Apply
+    value: Apply
+  - key: Button.OpenUVEditor
+    value: Open UV Editor
+  - key: Toggle.NdmfPreview
+    value: Enable NDMF Preview
+  - key: Toggle.FallbackTexture
+    value: Auto-generate Fallback Texture
+  - key: Tooltip.FallbackTexture
+    value: Renders shader at build time and sets _MainTex. Protects against VRChat
+      safety settings.
+  - key: EyeType.Both
+    value: Both
+  - key: EyeType.Left
+    value: Left
+  - key: EyeType.Right
+    value: Right
+  - key: Message.MaterialNotSet
+    value: Custom material is not set.
+  - key: Message.OpenFromInspector
+    value: Please open from Inspector's 'Open UV Editor' button.
+  - key: Message.RegionDeleted
+    value: The region has been deleted.
+  - key: Message.ClickHint
+    value: 'Click right panel to add
+
+      Right-click to delete'
+  - key: Message.NotSet
+    value: (Not set)
+  - key: Message.NoTexture
+    value: No texture
+  - key: Message.ClickHintBottom
+    value: 'Left-click: Add UV Island  Right-click: Delete'
+  - key: Message.UVIslandCount
+    value: 'Selected UV Islands: {0}'
+  - key: Message.SelUVIslands
+    value: 'Selected UV Islands: {0}'
+  - key: Message.UVPoints
+    value: 'UV Points: {0}'
+  - key: Window.UVEditor
+    value: Eye UV Editor
+  - key: Window.Setup
+    value: Manaco
+  - key: Setup.Title
+    value: Material Assign Non-destructive Assistant for Customization Operations
+  - key: Setup.TargetAvatar
+    value: Target Avatar
+  - key: Preset.SaveTitle
+    value: Save Avatar Preset
+  - key: Prefs.Language
+    value: Language

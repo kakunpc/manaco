@@ -1,0 +1,109 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5bb23a62e8d188458bce6697b3c2102, type: 3}
+  m_Name: ja
+  m_EditorClassIdentifier: 
+  languageName: "\u65E5\u672C\u8A9E"
+  languageCode: ja
+  entries:
+  - key: Label.AvatarPreset
+    value: "\u30A2\u30D0\u30BF\u30FC\u30D7\u30EA\u30BB\u30C3\u30C8"
+  - key: Label.CustomMaterial
+    value: "\u30AB\u30B9\u30BF\u30E0\u30DE\u30C6\u30EA\u30A2\u30EB"
+  - key: Label.AdvancedSettings
+    value: "\u4E0A\u7D1A\u8A2D\u5B9A"
+  - key: Label.EyeType
+    value: "\u76EE\u306E\u30BF\u30A4\u30D7"
+  - key: Label.Renderer
+    value: "\u30EC\u30F3\u30C0\u30E9\u30FC"
+  - key: Label.MaterialSlot
+    value: "\u30DE\u30C6\u30EA\u30A2\u30EB\u30B9\u30ED\u30C3\u30C8"
+  - key: Label.Material
+    value: "\u30DE\u30C6\u30EA\u30A2\u30EB"
+  - key: Label.Resolution
+    value: "\u89E3\u50CF\u5EA6"
+  - key: Prompt.SelectPreset
+    value: "--- \u30D7\u30EA\u30BB\u30C3\u30C8\u3092\u9078\u629E\u3057\u3066\u9069\u7528
+      ---"
+  - key: Prompt.SelectMaterial
+    value: "--- \u30DE\u30C6\u30EA\u30A2\u30EB\u3092\u9078\u629E\u3057\u3066\u9069\u7528
+      ---"
+  - key: Prompt.SelectAvatarPreset
+    value: "--- \u30A2\u30D0\u30BF\u30FC\u30D7\u30EA\u30BB\u30C3\u30C8\u3092\u9078\u629E
+      ---"
+  - key: Prompt.SelectMatPreset
+    value: "--- \u30DE\u30C6\u30EA\u30A2\u30EB\u30D7\u30EA\u30BB\u30C3\u30C8\u3092\u9078\u629E
+      ---"
+  - key: Popup.ApplyPreset
+    value: Apply Preset
+  - key: Popup.ApplyMaterial
+    value: Apply Material
+  - key: Popup.AvatarPreset
+    value: Avatar Preset
+  - key: Popup.ShaderPreset
+    value: Shader Preset
+  - key: Button.Refresh
+    value: "\u66F4\u65B0"
+  - key: Button.Delete
+    value: "\u524A\u9664"
+  - key: Button.Add
+    value: "+ \u8FFD\u52A0"
+  - key: Button.Apply
+    value: Apply
+  - key: Button.OpenUVEditor
+    value: "UV \u30A8\u30C7\u30A3\u30BF\u3092\u958B\u304F"
+  - key: Toggle.NdmfPreview
+    value: "NDMF Preview \u3092\u6709\u52B9\u306B\u3059\u308B"
+  - key: Toggle.FallbackTexture
+    value: "\u30D5\u30A9\u30FC\u30EB\u30D0\u30C3\u30AF\u30C6\u30AF\u30B9\u30C1\u30E3\u3092\u81EA\u52D5\u751F\u6210"
+  - key: Tooltip.FallbackTexture
+    value: "\u30D3\u30EB\u30C9\u6642\u306B\u30B7\u30A7\u30FC\u30C0\u30FC\u3092\u30EC\u30F3\u30C0\u30EA\u30F3\u30B0\u3057\u3066
+      _MainTex \u306B\u8A2D\u5B9A\u3057\u307E\u3059\u3002VRChat\u30BB\u30FC\u30D5\u30C6\u30A3\u30FC\u8A2D\u5B9A\u5BFE\u7B56\u3002"
+  - key: EyeType.Both
+    value: "\u4E21\u76EE"
+  - key: EyeType.Left
+    value: "\u5DE6\u76EE"
+  - key: EyeType.Right
+    value: "\u53F3\u76EE"
+  - key: Message.MaterialNotSet
+    value: "\u30AB\u30B9\u30BF\u30E0\u30DE\u30C6\u30EA\u30A2\u30EB\u304C\u672A\u8A2D\u5B9A\u3067\u3059\u3002"
+  - key: Message.OpenFromInspector
+    value: "Inspector\u306E\u300CUV \u30A8\u30C7\u30A3\u30BF\u3092\u958B\u304F\u300D\u30DC\u30BF\u30F3\u304B\u3089\u958B\u3044\u3066\u304F\u3060\u3055\u3044\u3002"
+  - key: Message.RegionDeleted
+    value: "\u30EA\u30FC\u30B8\u30E7\u30F3\u304C\u524A\u9664\u3055\u308C\u307E\u3057\u305F\u3002"
+  - key: Message.ClickHint
+    value: "\u53F3\u30D1\u30CD\u30EB\u3092\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u8FFD\u52A0\n\u53F3\u30AF\u30EA\u30C3\u30AF\u3067\u524A\u9664"
+  - key: Message.NotSet
+    value: "\uFF08\u672A\u8A2D\u5B9A\uFF09"
+  - key: Message.NoTexture
+    value: "\u30C6\u30AF\u30B9\u30C1\u30E3\u306A\u3057"
+  - key: Message.ClickHintBottom
+    value: "\u5DE6\u30AF\u30EA\u30C3\u30AF: UVIsland\u3092\u8FFD\u52A0\u3000\u53F3\u30AF\u30EA\u30C3\u30AF:
+      \u524A\u9664"
+  - key: Message.UVIslandCount
+    value: "\u9078\u629E\u6E08\u307FUV Island: {0} \u500B"
+  - key: Message.SelUVIslands
+    value: "\u9078\u629E\u6E08\u307F UV Island: {0} \u500B"
+  - key: Message.UVPoints
+    value: "UV\u9802\u70B9: {0} \u500B"
+  - key: Window.UVEditor
+    value: Eye UV Editor
+  - key: Window.Setup
+    value: "Manaco(\u307E\u306A\u3053)"
+  - key: Setup.Title
+    value: "Material Assign Non-destructive Assistant for Customization Operations\uFF08\u307E\u306A\u3053\uFF09"
+  - key: Setup.TargetAvatar
+    value: Target Avatar
+  - key: Preset.SaveTitle
+    value: Save Avatar Preset
+  - key: Prefs.Language
+    value: "\u8A00\u8A9E"

@@ -17,10 +17,9 @@ namespace com.kakunvr.manaco.Editor
 
         // ---- プレビューキャッシュ ----
         private Texture2D _previewTexture;
-        private Vector2[] _cachedUVs;   // materialIndex サブメッシュの頂点UV
-        private int[][] _cachedTriangles; // materialIndex サブメッシュのトライアングル
+        private Vector2[] _cachedUVs;
+        private int[][] _cachedTriangles;
 
-        // eyeUVRects に対応する選択済みトライアングル
         private HashSet<int> _selectedTris = new HashSet<int>();
 
         private Vector2 _leftPanelScroll;
@@ -33,7 +32,7 @@ namespace com.kakunvr.manaco.Editor
 
         public static void OpenWith(Manaco target, int regionIndex)
         {
-            var w = GetWindow<ManacoWindow>("Eye UV Editor");
+            var w = GetWindow<ManacoWindow>(ManacoLocale.T("Window.UVEditor"));
             w.SetRegion(target, regionIndex);
             w.Show();
         }
@@ -49,11 +48,8 @@ namespace com.kakunvr.manaco.Editor
             _so = target != null ? new SerializedObject(target) : null;
             RefreshPreviewCache();
 
-            // ウィンドウタイトルをリージョン情報に合わせる
             if (target != null && regionIndex < target.eyeRegions.Count)
-            {
                 titleContent = new GUIContent($"Eye UV [{regionIndex}]");
-            }
         }
 
         // ============================================================
@@ -77,12 +73,10 @@ namespace com.kakunvr.manaco.Editor
             var mesh = smr.sharedMesh;
             if (mesh == null) return;
 
-            // materialIndex のマテリアルからテクスチャを取得
             int matIdx = Mathf.Clamp(region.materialIndex, 0, smr.sharedMaterials.Length - 1);
             if (smr.sharedMaterials.Length > 0 && smr.sharedMaterials[matIdx] != null)
                 _previewTexture = smr.sharedMaterials[matIdx].mainTexture as Texture2D;
 
-            // materialIndex のサブメッシュのみUVキャッシュを作成
             _cachedUVs = mesh.uv;
             int subIdx = Mathf.Clamp(region.materialIndex, 0, mesh.subMeshCount - 1);
             var rawTris = mesh.GetTriangles(subIdx);
@@ -114,20 +108,13 @@ namespace com.kakunvr.manaco.Editor
                 for (int i = 0; i < _cachedTriangles.Length; i++)
                 {
                     var t = _cachedTriangles[i];
-                    long q0 = QuantizeUV(_cachedUVs[t[0]]);
-                    long q1 = QuantizeUV(_cachedUVs[t[1]]);
-                    long q2 = QuantizeUV(_cachedUVs[t[2]]);
-
-                    if (pointSet.Contains(q0) && pointSet.Contains(q1) && pointSet.Contains(q2))
-                    {
+                    if (pointSet.Contains(QuantizeUV(_cachedUVs[t[0]])) &&
+                        pointSet.Contains(QuantizeUV(_cachedUVs[t[1]])) &&
+                        pointSet.Contains(QuantizeUV(_cachedUVs[t[2]])))
                         _selectedTris.Add(i);
-                    }
                 }
             }
         }
-
-        private static bool IsTriInRect(Vector2[] uvs, int i0, int i1, int i2, Rect rect)
-            => rect.Contains(uvs[i0]) || rect.Contains(uvs[i1]) || rect.Contains(uvs[i2]);
 
         // ============================================================
         //  OnGUI
@@ -137,7 +124,7 @@ namespace com.kakunvr.manaco.Editor
         {
             if (_target == null)
             {
-                EditorGUILayout.HelpBox("Inspectorの「UV エディタを開く」ボタンから開いてください。", MessageType.Info);
+                EditorGUILayout.HelpBox(ManacoLocale.T("Message.OpenFromInspector"), MessageType.Info);
                 return;
             }
 
@@ -145,10 +132,9 @@ namespace com.kakunvr.manaco.Editor
                 _so = new SerializedObject(_target);
             _so.Update();
 
-            // ターゲットが変わっていないか確認
             if (_regionIndex >= _target.eyeRegions.Count)
             {
-                EditorGUILayout.HelpBox("リージョンが削除されました。", MessageType.Warning);
+                EditorGUILayout.HelpBox(ManacoLocale.T("Message.RegionDeleted"), MessageType.Warning);
                 _so.ApplyModifiedProperties();
                 return;
             }
@@ -175,24 +161,21 @@ namespace com.kakunvr.manaco.Editor
             _leftPanelScroll = EditorGUILayout.BeginScrollView(_leftPanelScroll);
             EditorGUILayout.Space(4);
 
-            var regionsProp = _so.FindProperty("eyeRegions");
-            var elem = regionsProp.GetArrayElementAtIndex(_regionIndex);
-            var rendererProp       = elem.FindPropertyRelative("targetRenderer");
-            var matIndexProp       = elem.FindPropertyRelative("materialIndex");
-            var uvRegionsProp      = elem.FindPropertyRelative("eyePolygonRegions");
+            var regionsProp  = _so.FindProperty("eyeRegions");
+            var elem         = regionsProp.GetArrayElementAtIndex(_regionIndex);
+            var rendererProp = elem.FindPropertyRelative("targetRenderer");
+            var matIndexProp = elem.FindPropertyRelative("materialIndex");
+            var uvRegionsProp = elem.FindPropertyRelative("eyePolygonRegions");
 
-            // ---- リージョン情報 ----
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            // SMR（読み取り専用表示）
             var smr = rendererProp.objectReferenceValue as SkinnedMeshRenderer;
             EditorGUI.BeginDisabledGroup(true);
             EditorGUILayout.ObjectField("SkinnedMeshRenderer", smr, typeof(SkinnedMeshRenderer), true);
             EditorGUI.EndDisabledGroup();
 
-            // materialIndex（変更可：変えるとUV表示が切り替わる）
             EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(matIndexProp, new GUIContent("マテリアルスロット"));
+            EditorGUILayout.PropertyField(matIndexProp, new GUIContent(ManacoLocale.T("Label.MaterialSlot")));
             if (EditorGUI.EndChangeCheck())
             {
                 _so.ApplyModifiedProperties();
@@ -202,26 +185,26 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(8);
 
-            // ---- UV Island一覧 ----
-            EditorGUILayout.LabelField($"選択済み UV Island: {uvRegionsProp.arraySize} 個", EditorStyles.boldLabel);
-            EditorGUILayout.HelpBox("右パネルをクリックして追加\n右クリックで削除", MessageType.None);
+            EditorGUILayout.LabelField(
+                ManacoLocale.T("Message.SelUVIslands", uvRegionsProp.arraySize),
+                EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(ManacoLocale.T("Message.ClickHint"), MessageType.None);
 
             for (int i = 0; i < uvRegionsProp.arraySize; i++)
             {
-                var regionElem = uvRegionsProp.GetArrayElementAtIndex(i);
+                var regionElem  = uvRegionsProp.GetArrayElementAtIndex(i);
                 var indicesProp = regionElem.FindPropertyRelative("uvPoints");
-                int ptsCount = indicesProp.arraySize;
+                int ptsCount    = indicesProp.arraySize;
 
                 EditorGUILayout.BeginHorizontal();
 
-                // 色インジケーター
                 float hue = (i * 0.618f) % 1f;
                 var col = Color.HSVToRGB(hue, 0.8f, 1f);
                 var indRect = GUILayoutUtility.GetRect(8f, 14f, GUILayout.Width(8f));
                 EditorGUI.DrawRect(indRect, col);
 
                 EditorGUILayout.LabelField(
-                    $"[{i}]  UV頂点: {ptsCount} 個",
+                    $"[{i}]  {ManacoLocale.T("Message.UVPoints", ptsCount)}",
                     EditorStyles.miniLabel, GUILayout.ExpandWidth(true));
 
                 if (GUILayout.Button("✕", GUILayout.Width(24)))
@@ -237,7 +220,7 @@ namespace com.kakunvr.manaco.Editor
             }
 
             if (uvRegionsProp.arraySize == 0)
-                EditorGUILayout.LabelField("  （未設定）", EditorStyles.miniLabel);
+                EditorGUILayout.LabelField($"  {ManacoLocale.T("Message.NotSet")}", EditorStyles.miniLabel);
 
             EditorGUILayout.EndScrollView();
             EditorGUILayout.EndVertical();
@@ -272,7 +255,7 @@ namespace com.kakunvr.manaco.Editor
             if (_previewTexture != null)
                 GUI.DrawTexture(previewRect, _previewTexture, ScaleMode.StretchToFill);
             else
-                GUI.Label(previewRect, "テクスチャなし", EditorStyles.centeredGreyMiniLabel);
+                GUI.Label(previewRect, ManacoLocale.T("Message.NoTexture"), EditorStyles.centeredGreyMiniLabel);
 
             DrawUVWireframe(previewRect);
             DrawUVRectOverlays(previewRect);
@@ -280,7 +263,7 @@ namespace com.kakunvr.manaco.Editor
             if (_cachedUVs != null)
             {
                 var hintRect = new Rect(previewRect.x, previewRect.yMax + 4f, previewRect.width, 20f);
-                GUI.Label(hintRect, "左クリック: UVIslandを追加　右クリック: 削除",
+                GUI.Label(hintRect, ManacoLocale.T("Message.ClickHintBottom"),
                     EditorStyles.centeredGreyMiniLabel);
                 EditorGUIUtility.AddCursorRect(previewRect, MouseCursor.Arrow);
             }
@@ -296,7 +279,6 @@ namespace com.kakunvr.manaco.Editor
 
             Handles.BeginGUI();
 
-            // 全トライアングル（薄い白）
             Handles.color = new Color(1f, 1f, 1f, 0.15f);
             foreach (var tri in _cachedTriangles)
             {
@@ -308,7 +290,6 @@ namespace com.kakunvr.manaco.Editor
                 Handles.DrawLine(p2, p0);
             }
 
-            // 選択済みトライアングル（緑）
             Handles.color = new Color(SelectionColor.r, SelectionColor.g, SelectionColor.b, 0.7f);
             foreach (int idx in _selectedTris)
             {
@@ -335,10 +316,10 @@ namespace com.kakunvr.manaco.Editor
                 float hue = (i * 0.618f) % 1f;
                 var col = Color.HSVToRGB(hue, 0.8f, 1f);
 
-                if (region.eyePolygonRegions[i].uvPoints == null || region.eyePolygonRegions[i].uvPoints.Length == 0) continue;
+                if (region.eyePolygonRegions[i].uvPoints == null ||
+                    region.eyePolygonRegions[i].uvPoints.Length == 0) continue;
 
                 Rect uvRect = CalcUVBounds(region.eyePolygonRegions[i].uvPoints);
-
                 DrawRectOverlay(previewRect, uvRect,
                     new Color(col.r, col.g, col.b, 0.25f),
                     new Color(col.r, col.g, col.b, 1f),
@@ -346,8 +327,7 @@ namespace com.kakunvr.manaco.Editor
             }
         }
 
-        private void DrawRectOverlay(Rect previewRect, Rect uvRect,
-            Color fill, Color border, string label)
+        private void DrawRectOverlay(Rect previewRect, Rect uvRect, Color fill, Color border, string label)
         {
             float rx = previewRect.x + uvRect.x * previewRect.width;
             float ry = previewRect.y + (1f - uvRect.y - uvRect.height) * previewRect.height;
@@ -388,7 +368,6 @@ namespace com.kakunvr.manaco.Editor
 
             if (e.button == 0)
             {
-                // 左クリック: UVIslandを追加
                 var islandTris = FindUVIslandAt(clickedUV);
                 if (islandTris.Count == 0) { e.Use(); return; }
 
@@ -401,13 +380,10 @@ namespace com.kakunvr.manaco.Editor
                         var uv = _cachedUVs[vi];
                         long q = QuantizeUV(uv);
                         if (pointSet.Add(q))
-                        {
                             uvPointsList.Add(uv);
-                        }
                     }
                 }
 
-                // 既に含まれているかチェック
                 var region = _target.eyeRegions[_regionIndex];
                 foreach (var existing in region.eyePolygonRegions)
                 {
@@ -415,9 +391,7 @@ namespace com.kakunvr.manaco.Editor
                     {
                         int matchCount = 0;
                         foreach (var pt in existing.uvPoints)
-                        {
                             if (pointSet.Contains(QuantizeUV(pt))) matchCount++;
-                        }
                         if (matchCount == uvPointsList.Count) { e.Use(); return; }
                     }
                 }
@@ -431,20 +405,15 @@ namespace com.kakunvr.manaco.Editor
                 var indicesProp = newElemProp.FindPropertyRelative("uvPoints");
                 indicesProp.arraySize = uvPointsList.Count;
                 for (int i = 0; i < uvPointsList.Count; i++)
-                {
                     indicesProp.GetArrayElementAtIndex(i).vector2Value = uvPointsList[i];
-                }
 
                 _so.ApplyModifiedProperties();
-
                 foreach (int ti in islandTris) _selectedTris.Add(ti);
             }
             else if (e.button == 1)
             {
-                // 右クリック: トライアングルを含むIslandを削除
                 var region = _target.eyeRegions[_regionIndex];
 
-                // クリック位置から最も近いトライアングルを見つける
                 int nearestIdx = -1;
                 float minDist = float.MaxValue;
                 for (int i = 0; i < _cachedTriangles.Length; i++)
@@ -462,21 +431,12 @@ namespace com.kakunvr.manaco.Editor
                     for (int i = 0; i < region.eyePolygonRegions.Length; i++)
                     {
                         if (region.eyePolygonRegions[i].uvPoints == null) continue;
-
                         bool contains = false;
                         foreach (var pt in region.eyePolygonRegions[i].uvPoints)
                         {
-                            if (QuantizeUV(pt) == q0)
-                            {
-                                contains = true;
-                                break;
-                            }
+                            if (QuantizeUV(pt) == q0) { contains = true; break; }
                         }
-                        if (contains)
-                        {
-                            removeIdx = i;
-                            break;
-                        }
+                        if (contains) { removeIdx = i; break; }
                     }
 
                     if (removeIdx >= 0)
@@ -544,9 +504,7 @@ namespace com.kakunvr.manaco.Editor
                     long key = QuantizeUV(_cachedUVs[vi]);
                     if (!uvToTris.TryGetValue(key, out var neighbors)) continue;
                     foreach (int ni in neighbors)
-                    {
                         if (visited.Add(ni)) queue.Enqueue(ni);
-                    }
                 }
             }
 
@@ -564,7 +522,6 @@ namespace com.kakunvr.manaco.Editor
         {
             float minX = float.MaxValue, minY = float.MaxValue;
             float maxX = float.MinValue, maxY = float.MinValue;
-
             foreach (var uv in points)
             {
                 if (uv.x < minX) minX = uv.x;
@@ -572,13 +529,8 @@ namespace com.kakunvr.manaco.Editor
                 if (uv.x > maxX) maxX = uv.x;
                 if (uv.y > maxY) maxY = uv.y;
             }
-
             return Rect.MinMaxRect(minX, minY, maxX, maxY);
         }
-
-        // ============================================================
-        //  座標変換
-        // ============================================================
 
         private static Vector3 UVToScreen(Rect r, Vector2 uv) =>
             new Vector3(r.x + uv.x * r.width, r.y + (1f - uv.y) * r.height, 0f);

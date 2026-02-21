@@ -20,12 +20,10 @@ namespace com.kakunvr.manaco.Editor
         [MenuItem("GameObject/ちゃとらとりー/Manaco(まなこ)", false, 0)]
         private static void ShowWindow(MenuCommand command)
         {
-            var window = GetWindow<ManacoSetupWindow>("Manaco(まなこ)");
+            var window = GetWindow<ManacoSetupWindow>(ManacoLocale.T("Window.Setup"));
             window._targetAvatar = command.context as GameObject;
             if (window._targetAvatar == null)
-            {
                 window._targetAvatar = Selection.activeGameObject;
-            }
             window.Show();
         }
 
@@ -40,7 +38,7 @@ namespace com.kakunvr.manaco.Editor
             string[] guids = AssetDatabase.FindAssets("t:ManacoPreset");
             _availablePresets = new ManacoPreset[guids.Length];
             _presetNames = new string[guids.Length + 1];
-            _presetNames[0] = "--- アバタープリセットを選択 ---";
+            _presetNames[0] = ManacoLocale.T("Prompt.SelectAvatarPreset");
 
             for (int i = 0; i < guids.Length; i++)
             {
@@ -55,7 +53,7 @@ namespace com.kakunvr.manaco.Editor
             string[] guids = AssetDatabase.FindAssets("t:ManacoShaderDefinition");
             _availableShaders = new ManacoShaderDefinition[guids.Length];
             _shaderNames = new string[guids.Length + 1];
-            _shaderNames[0] = "--- マテリアルプリセットを選択 ---";
+            _shaderNames[0] = ManacoLocale.T("Prompt.SelectMatPreset");
 
             for (int i = 0; i < guids.Length; i++)
             {
@@ -67,32 +65,35 @@ namespace com.kakunvr.manaco.Editor
 
         private void OnGUI()
         {
-            EditorGUILayout.LabelField("Material Assign Non-destructive Assistant for Customization Operations（まなこ）", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(ManacoLocale.T("Setup.Title"), EditorStyles.boldLabel);
             EditorGUILayout.Space();
 
-            _targetAvatar = (GameObject)EditorGUILayout.ObjectField("Target Avatar", _targetAvatar, typeof(GameObject), true);
+            _targetAvatar = (GameObject)EditorGUILayout.ObjectField(
+                ManacoLocale.T("Setup.TargetAvatar"), _targetAvatar, typeof(GameObject), true);
 
             EditorGUILayout.Space();
 
             EditorGUILayout.BeginHorizontal();
-            _selectedPresetIndex = EditorGUILayout.Popup("Avatar Preset", _selectedPresetIndex, _presetNames);
-            if (GUILayout.Button("更新", GUILayout.Width(40))) LoadPresets();
+            _selectedPresetIndex = EditorGUILayout.Popup(
+                ManacoLocale.T("Popup.AvatarPreset"), _selectedPresetIndex, _presetNames);
+            if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50))) LoadPresets();
             EditorGUILayout.EndHorizontal();
-            _avatarPreset = (_selectedPresetIndex > 0 && _selectedPresetIndex <= _availablePresets.Length) ? _availablePresets[_selectedPresetIndex - 1] : null;
+            _avatarPreset = (_selectedPresetIndex > 0 && _selectedPresetIndex <= _availablePresets.Length)
+                ? _availablePresets[_selectedPresetIndex - 1] : null;
 
             EditorGUILayout.BeginHorizontal();
-            _selectedShaderIndex = EditorGUILayout.Popup("Shader Preset", _selectedShaderIndex, _shaderNames);
-            if (GUILayout.Button("更新", GUILayout.Width(40))) LoadShaders();
+            _selectedShaderIndex = EditorGUILayout.Popup(
+                ManacoLocale.T("Popup.ShaderPreset"), _selectedShaderIndex, _shaderNames);
+            if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50))) LoadShaders();
             EditorGUILayout.EndHorizontal();
-            _shaderPreset = (_selectedShaderIndex > 0 && _selectedShaderIndex <= _availableShaders.Length) ? _availableShaders[_selectedShaderIndex - 1] : null;
+            _shaderPreset = (_selectedShaderIndex > 0 && _selectedShaderIndex <= _availableShaders.Length)
+                ? _availableShaders[_selectedShaderIndex - 1] : null;
 
             EditorGUILayout.Space();
 
             EditorGUI.BeginDisabledGroup(_targetAvatar == null || _avatarPreset == null || _shaderPreset == null);
-            if (GUILayout.Button("Apply", GUILayout.Height(30)))
-            {
+            if (GUILayout.Button(ManacoLocale.T("Button.Apply"), GUILayout.Height(30)))
                 ApplySetup();
-            }
             EditorGUI.EndDisabledGroup();
         }
 
@@ -104,7 +105,6 @@ namespace com.kakunvr.manaco.Editor
             eyeObj.transform.SetParent(_targetAvatar.transform, false);
 
             var comp = eyeObj.AddComponent<Manaco>();
-
             comp.appliedAvatarPreset = _avatarPreset;
             comp.appliedShaderDef = _shaderPreset;
             comp.eyeRegions.Clear();
@@ -144,17 +144,11 @@ namespace com.kakunvr.manaco.Editor
                 }
 
                 if (region.eyeType == Manaco.EyeType.Left)
-                {
                     region.customMaterial = _shaderPreset.leftEyeMaterial;
-                }
                 else if (region.eyeType == Manaco.EyeType.Right)
-                {
                     region.customMaterial = _shaderPreset.rightEyeMaterial;
-                }
                 else if (region.eyeType == Manaco.EyeType.Both)
-                {
                     region.customMaterial = _shaderPreset.bothEyeMaterial;
-                }
 
                 comp.eyeRegions.Add(region);
             }

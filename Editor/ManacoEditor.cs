@@ -26,7 +26,7 @@ namespace com.kakunvr.manaco.Editor
             string[] guids = AssetDatabase.FindAssets("t:ManacoPreset");
             _availablePresets = new ManacoPreset[guids.Length];
             _presetNames = new string[guids.Length + 1];
-            _presetNames[0] = "--- プリセットを選択して適用 ---";
+            _presetNames[0] = ManacoLocale.T("Prompt.SelectPreset");
 
             var comp = target as Manaco;
             _selectedPresetIndex = 0;
@@ -38,9 +38,7 @@ namespace com.kakunvr.manaco.Editor
                 _presetNames[i + 1] = _availablePresets[i].avatarName;
 
                 if (comp != null && comp.appliedAvatarPreset == _availablePresets[i])
-                {
                     _selectedPresetIndex = i + 1;
-                }
             }
         }
 
@@ -53,7 +51,7 @@ namespace com.kakunvr.manaco.Editor
             string[] guids = AssetDatabase.FindAssets("t:ManacoShaderDefinition");
             _availableShaders = new ManacoShaderDefinition[guids.Length];
             _shaderNames = new string[guids.Length + 1];
-            _shaderNames[0] = "--- マテリアルを選択して適用 ---";
+            _shaderNames[0] = ManacoLocale.T("Prompt.SelectMaterial");
 
             var comp = target as Manaco;
             _selectedShaderIndex = 0;
@@ -65,9 +63,7 @@ namespace com.kakunvr.manaco.Editor
                 _shaderNames[i + 1] = _availableShaders[i].shaderName;
 
                 if (comp != null && comp.appliedShaderDef == _availableShaders[i])
-                {
                     _selectedShaderIndex = i + 1;
-                }
             }
         }
 
@@ -76,50 +72,44 @@ namespace com.kakunvr.manaco.Editor
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            EditorGUILayout.LabelField("アバタープリセット", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(ManacoLocale.T("Label.AvatarPreset"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginHorizontal();
-            int newIndex = EditorGUILayout.Popup("Apply Preset", _selectedPresetIndex, _presetNames);
+            int newIndex = EditorGUILayout.Popup(ManacoLocale.T("Popup.ApplyPreset"), _selectedPresetIndex, _presetNames);
             if (newIndex != _selectedPresetIndex)
             {
                 _selectedPresetIndex = newIndex;
                 if (_selectedPresetIndex > 0)
-                {
                     ApplyPreset((Manaco)target, _availablePresets[_selectedPresetIndex - 1]);
-                }
             }
-            if (GUILayout.Button("更新", GUILayout.Width(40)))
-            {
+            if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50)))
                 LoadPresets();
-            }
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("カスタムマテリアル", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(ManacoLocale.T("Label.CustomMaterial"), EditorStyles.boldLabel);
 
             EditorGUILayout.BeginHorizontal();
-            int newShaderIndex = EditorGUILayout.Popup("Apply Material", _selectedShaderIndex, _shaderNames);
+            int newShaderIndex = EditorGUILayout.Popup(ManacoLocale.T("Popup.ApplyMaterial"), _selectedShaderIndex, _shaderNames);
             if (newShaderIndex != _selectedShaderIndex)
             {
                 _selectedShaderIndex = newShaderIndex;
                 if (_selectedShaderIndex > 0)
-                {
                     ApplyShader((Manaco)target, _availableShaders[_selectedShaderIndex - 1]);
-                }
             }
-            if (GUILayout.Button("更新", GUILayout.Width(40)))
-            {
+            if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50)))
                 LoadShaders();
-            }
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(8);
 
-            EditorGUILayout.PropertyField(_useNdmfPreviewProp, new GUIContent("NDMF Preview を有効にする"));
+            EditorGUILayout.PropertyField(_useNdmfPreviewProp,
+                new GUIContent(ManacoLocale.T("Toggle.NdmfPreview")));
 
             EditorGUILayout.Space(8);
 
-            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "上級設定", true, EditorStyles.foldoutHeader);
+            _showAdvanced = EditorGUILayout.Foldout(_showAdvanced,
+                ManacoLocale.T("Label.AdvancedSettings"), true, EditorStyles.foldoutHeader);
             if (_showAdvanced)
             {
                 var comp = (Manaco)target;
@@ -131,11 +121,23 @@ namespace com.kakunvr.manaco.Editor
                 }
 
                 EditorGUILayout.Space(4);
-                if (GUILayout.Button("+ 追加"))
+                if (GUILayout.Button(ManacoLocale.T("Button.Add")))
                     _eyeRegionsProp.arraySize++;
             }
 
             serializedObject.ApplyModifiedProperties();
+
+            EditorGUILayout.Space(8);
+            EditorGUI.DrawRect(GUILayoutUtility.GetRect(0, 1, GUILayout.ExpandWidth(true)), new Color(0.3f, 0.3f, 0.3f));
+            EditorGUILayout.Space(4);
+
+            var (codes, names) = ManacoLocale.GetAvailableLanguages();
+            int langIdx = System.Array.IndexOf(codes, ManacoLocale.CurrentLanguageCode);
+            if (langIdx < 0) langIdx = 0;
+            EditorGUI.BeginChangeCheck();
+            int newLangIdx = EditorGUILayout.Popup(ManacoLocale.T("Prefs.Language"), langIdx, names);
+            if (EditorGUI.EndChangeCheck() && newLangIdx >= 0 && newLangIdx < codes.Length)
+                ManacoLocale.SetLanguage(codes[newLangIdx]);
         }
 
         private void ApplyPreset(Manaco comp, ManacoPreset preset)
@@ -145,7 +147,6 @@ namespace com.kakunvr.manaco.Editor
             comp.appliedAvatarPreset = preset;
             comp.eyeRegions.Clear();
 
-            // アバターのルートからSkinnedMeshRendererを検索する
             Transform searchRoot = comp.transform;
             var descriptor = comp.GetComponentInParent<VRC.SDKBase.VRC_AvatarDescriptor>();
             if (descriptor != null) searchRoot = descriptor.transform;
@@ -174,7 +175,6 @@ namespace com.kakunvr.manaco.Editor
                     };
                 }
 
-                // オブジェクト名に一致するSkinnedMeshRendererを探す
                 foreach (var smr in renderers)
                 {
                     if (smr.name == pr.targetRendererName)
@@ -187,16 +187,11 @@ namespace com.kakunvr.manaco.Editor
                 comp.eyeRegions.Add(region);
             }
 
-            // シェーダーがすでに適用されているなら再度割り当て直す
             if (comp.appliedShaderDef != null)
-            {
                 ApplyShader(comp, comp.appliedShaderDef);
-            }
 
             serializedObject.Update();
             EditorUtility.SetDirty(comp);
-
-            // Debug.Log($"[Manaco] Applied preset: {preset.avatarName}");
         }
 
         private void ApplyShader(Manaco comp, ManacoShaderDefinition shaderDef)
@@ -208,46 +203,43 @@ namespace com.kakunvr.manaco.Editor
             foreach (var region in comp.eyeRegions)
             {
                 if (region.eyeType == Manaco.EyeType.Left)
-                {
                     region.customMaterial = shaderDef.leftEyeMaterial;
-                }
                 else if (region.eyeType == Manaco.EyeType.Right)
-                {
                     region.customMaterial = shaderDef.rightEyeMaterial;
-                }
                 else if (region.eyeType == Manaco.EyeType.Both)
-                {
                     region.customMaterial = shaderDef.bothEyeMaterial;
-                }
             }
 
             serializedObject.Update();
             EditorUtility.SetDirty(comp);
-
-            // Debug.Log($"[Manaco] Applied shader: {shaderDef.shaderName}");
         }
 
         private bool DrawEyeRegionSummary(Manaco comp, SerializedProperty element, int index)
         {
-            var eyeTypeProp             = element.FindPropertyRelative("eyeType");
-            var rendererProp            = element.FindPropertyRelative("targetRenderer");
-            var matIndexProp            = element.FindPropertyRelative("materialIndex");
-            var uvRectsProp             = element.FindPropertyRelative("eyePolygonRegions");
-            var customMaterialProp      = element.FindPropertyRelative("customMaterial");
-            var bakeFallbackProp        = element.FindPropertyRelative("bakeFallbackTexture");
-            var fallbackResolutionProp  = element.FindPropertyRelative("fallbackTextureResolution");
+            var eyeTypeProp            = element.FindPropertyRelative("eyeType");
+            var rendererProp           = element.FindPropertyRelative("targetRenderer");
+            var matIndexProp           = element.FindPropertyRelative("materialIndex");
+            var uvRectsProp            = element.FindPropertyRelative("eyePolygonRegions");
+            var customMaterialProp     = element.FindPropertyRelative("customMaterial");
+            var bakeFallbackProp       = element.FindPropertyRelative("bakeFallbackTexture");
+            var fallbackResolutionProp = element.FindPropertyRelative("fallbackTextureResolution");
 
             var smr = rendererProp.objectReferenceValue as SkinnedMeshRenderer;
             var eyeTypeEnum = (Manaco.EyeType)eyeTypeProp.enumValueIndex;
-            string eyeTypeStr = eyeTypeEnum == Manaco.EyeType.Both ? "両目" : (eyeTypeEnum == Manaco.EyeType.Left ? "左目" : "右目");
-            string label = smr != null ? $"[{index}] ({eyeTypeStr})  ({smr.name})" : $"[{index}]({eyeTypeStr})";
+            string eyeTypeStr = eyeTypeEnum == Manaco.EyeType.Both
+                ? ManacoLocale.T("EyeType.Both")
+                : (eyeTypeEnum == Manaco.EyeType.Left
+                    ? ManacoLocale.T("EyeType.Left")
+                    : ManacoLocale.T("EyeType.Right"));
+            string label = smr != null
+                ? $"[{index}] ({eyeTypeStr})  ({smr.name})"
+                : $"[{index}]({eyeTypeStr})";
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
-            // ヘッダー行（ラベル + 削除ボタン）
             EditorGUILayout.BeginHorizontal();
             EditorGUILayout.LabelField(label, EditorStyles.boldLabel);
-            if (GUILayout.Button("削除", GUILayout.Width(50)))
+            if (GUILayout.Button(ManacoLocale.T("Button.Delete"), GUILayout.Width(50)))
             {
                 _eyeRegionsProp.DeleteArrayElementAtIndex(index);
                 EditorGUILayout.EndHorizontal();
@@ -256,20 +248,23 @@ namespace com.kakunvr.manaco.Editor
             }
             EditorGUILayout.EndHorizontal();
 
-            EditorGUILayout.PropertyField(eyeTypeProp, new GUIContent("目のタイプ"));
-            EditorGUILayout.PropertyField(rendererProp, new GUIContent("レンダラー"));
-            EditorGUILayout.PropertyField(matIndexProp, new GUIContent("マテリアルスロット"));
-            EditorGUILayout.PropertyField(customMaterialProp, new GUIContent("マテリアル"));
+            EditorGUILayout.PropertyField(eyeTypeProp,        new GUIContent(ManacoLocale.T("Label.EyeType")));
+            EditorGUILayout.PropertyField(rendererProp,       new GUIContent(ManacoLocale.T("Label.Renderer")));
+            EditorGUILayout.PropertyField(matIndexProp,       new GUIContent(ManacoLocale.T("Label.MaterialSlot")));
+            EditorGUILayout.PropertyField(customMaterialProp, new GUIContent(ManacoLocale.T("Label.Material")));
 
             if (customMaterialProp.objectReferenceValue == null)
-                EditorGUILayout.HelpBox("カスタムマテリアルが未設定です。", MessageType.Warning);
+                EditorGUILayout.HelpBox(ManacoLocale.T("Message.MaterialNotSet"), MessageType.Warning);
 
-            EditorGUILayout.PropertyField(bakeFallbackProp, new GUIContent("フォールバックテクスチャを自動生成", "ビルド時にシェーダーをレンダリングして _MainTex に設定します。VRChatセーフティー設定対策。"));
+            EditorGUILayout.PropertyField(bakeFallbackProp,
+                new GUIContent(
+                    ManacoLocale.T("Toggle.FallbackTexture"),
+                    ManacoLocale.T("Tooltip.FallbackTexture")));
             if (bakeFallbackProp.boolValue)
             {
                 EditorGUI.indentLevel++;
                 fallbackResolutionProp.intValue = EditorGUILayout.IntPopup(
-                    "解像度",
+                    ManacoLocale.T("Label.Resolution"),
                     fallbackResolutionProp.intValue,
                     new[] { "64", "128", "256", "512", "1024", "2048" },
                     new[] { 64, 128, 256, 512, 1024, 2048 });
@@ -277,13 +272,14 @@ namespace com.kakunvr.manaco.Editor
             }
 
             EditorGUI.indentLevel++;
-            EditorGUILayout.LabelField($"選択済みUV Island: {uvRectsProp.arraySize} 個", EditorStyles.miniLabel);
+            EditorGUILayout.LabelField(
+                ManacoLocale.T("Message.UVIslandCount", uvRectsProp.arraySize),
+                EditorStyles.miniLabel);
             EditorGUI.indentLevel--;
 
             EditorGUILayout.Space(2);
 
-            // このリージョン専用のUVエディタを開くボタン
-            if (GUILayout.Button("UV エディタを開く"))
+            if (GUILayout.Button(ManacoLocale.T("Button.OpenUVEditor")))
                 ManacoWindow.OpenWith(comp, index);
 
             EditorGUILayout.EndVertical();
