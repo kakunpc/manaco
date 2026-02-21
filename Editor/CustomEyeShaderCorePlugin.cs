@@ -1,12 +1,12 @@
 using nadena.dev.ndmf;
-using Chatoratori.CustomEyeShaderCore;
-using Chatoratori.CustomEyeShaderCore.Editor;
+using com.kakunvr.manaco;
+using com.kakunvr.manaco.Editor;
 
 // NDMFへのプラグイン登録。
 // GeneratingフェーズはModularAvatarの処理後、最終ビルド前に実行されます。
 [assembly: ExportsPlugin(typeof(CustomEyeShaderCorePlugin))]
 
-namespace Chatoratori.CustomEyeShaderCore
+namespace com.kakunvr.manaco
 {
     public class CustomEyeShaderCorePlugin : Plugin<CustomEyeShaderCorePlugin>
     {

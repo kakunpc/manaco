@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace Chatoratori.CustomEyeShaderCore.Editor
+namespace com.kakunvr.manaco.Editor
 {
     public static class CustomEyeShaderCorePresetUtility
     {

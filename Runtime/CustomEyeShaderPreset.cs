@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace Chatoratori.CustomEyeShaderCore
+namespace com.kakunvr.manaco
 {
     [CreateAssetMenu(fileName = "NewCustomEyeShaderPreset", menuName = "ちゃとらとりー/CustomEyeShader Preset")]
     public class CustomEyeShaderPreset : ScriptableObject

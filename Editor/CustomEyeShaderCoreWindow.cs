@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-namespace Chatoratori.CustomEyeShaderCore.Editor
+namespace com.kakunvr.manaco.Editor
 {
     /// <summary>
     /// 1つのEyeRegionに対してUV領域をインタラクティブに設定するEditorWindow。

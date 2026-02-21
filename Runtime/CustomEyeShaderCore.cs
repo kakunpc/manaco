@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using VRC.SDKBase;
 
-namespace Chatoratori.CustomEyeShaderCore
+namespace com.kakunvr.manaco
 {
     /// <summary>
     /// アバターの目のポリゴンに対してカスタムシェーダーを適用するModularAvatarコンポーネント。

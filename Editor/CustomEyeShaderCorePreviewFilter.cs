@@ -6,7 +6,7 @@ using nadena.dev.ndmf;
 using nadena.dev.ndmf.preview;
 using UnityEngine;
 
-namespace Chatoratori.CustomEyeShaderCore.Editor
+namespace com.kakunvr.manaco.Editor
 {
     public class CustomEyeShaderCorePreviewFilter : IRenderFilter
     {

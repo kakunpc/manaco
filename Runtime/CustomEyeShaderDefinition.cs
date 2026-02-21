@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Chatoratori.CustomEyeShaderCore
+namespace com.kakunvr.manaco
 {
     [CreateAssetMenu(fileName = "NewCustomEyeShaderDef", menuName = "ちゃとらとりー/Custom Eye Shader Definition")]
     public class CustomEyeShaderDefinition : ScriptableObject

@@ -5,7 +5,7 @@ using nadena.dev.ndmf;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-namespace Chatoratori.CustomEyeShaderCore
+namespace com.kakunvr.manaco
 {
     /// <summary>
     /// ビルド時に目のポリゴンを別SubMeshに分割し、UV を [0, 1] に正規化するパス。

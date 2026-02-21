@@ -1,14 +1,10 @@
 {
-    "name": "Chatoratori.CustomEyeShaderCore.Editor",
-    "rootNamespace": "Chatoratori.CustomEyeShaderCore.Editor",
+    "name": "com.kakunvr.manaco.Runtime",
+    "rootNamespace": "com.kakunvr.manaco",
     "references": [
-        "Chatoratori.CustomEyeShaderCore.Runtime",
-        "nadena.dev.ndmf",
         "VRC.SDKBase"
     ],
-    "includePlatforms": [
-        "Editor"
-    ],
+    "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,

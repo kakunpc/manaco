@@ -1,7 +1,7 @@
 using UnityEditor;
 using UnityEngine;
 
-namespace Chatoratori.CustomEyeShaderCore.Editor
+namespace com.kakunvr.manaco.Editor
 {
     [CustomEditor(typeof(CustomEyeShaderCore))]
     public class CustomEyeShaderCoreEditor : UnityEditor.Editor
