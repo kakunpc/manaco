@@ -11,28 +11,28 @@ namespace com.kakunvr.manaco
     /// ビルド時に目のポリゴンを別SubMeshに分割し、UV を [0, 1] に正規化するパス。
     /// 頂点は複製して元のメッシュデータに影響を与えない。
     /// </summary>
-    public class CustomEyeShaderCorePass
+    public class ManacoPass
     {
         public void Execute(BuildContext ctx)
         {
             var components = ctx.AvatarRootObject
-                .GetComponentsInChildren<CustomEyeShaderCore>(true);
+                .GetComponentsInChildren<Manaco>(true);
             foreach (var component in components)
                 ProcessComponent(component);
         }
 
-        private void ProcessComponent(CustomEyeShaderCore component)
+        private void ProcessComponent(Manaco component)
         {
             foreach (var region in component.eyeRegions)
             {
                 if (region.targetRenderer == null)
                 {
-                    Debug.LogWarning("[CustomEyeShaderCore] targetRenderer が未設定のEyeRegionがあります。スキップします。", component);
+                    Debug.LogWarning("[Manaco] targetRenderer が未設定のEyeRegionがあります。スキップします。", component);
                     continue;
                 }
                 if (region.eyePolygonRegions == null || region.eyePolygonRegions.Length == 0)
                 {
-                    Debug.LogWarning("[CustomEyeShaderCore] eyePolygonRegions が空のEyeRegionがあります。スキップします。", component);
+                    Debug.LogWarning("[Manaco] eyePolygonRegions が空のEyeRegionがあります。スキップします。", component);
                     continue;
                 }
                 ApplyEyeSubMesh(region, region.targetRenderer);
@@ -40,22 +40,22 @@ namespace com.kakunvr.manaco
             UnityEngine.Object.DestroyImmediate(component);
         }
 
-        public Mesh ApplyEyeSubMesh(CustomEyeShaderCore.EyeRegion region, SkinnedMeshRenderer smr)
+        public Mesh ApplyEyeSubMesh(Manaco.EyeRegion region, SkinnedMeshRenderer smr)
         {
             var originalMesh = smr.sharedMesh;
             if (originalMesh == null)
             {
-                Debug.LogWarning($"[CustomEyeShaderCore] {smr.name} のsharedMeshがnullです。スキップします。");
+                Debug.LogWarning($"[Manaco] {smr.name} のsharedMeshがnullです。スキップします。");
                 return null;
             }
 
             var mesh = UnityEngine.Object.Instantiate(originalMesh);
-            mesh.name = originalMesh.name + "_CustomEye";
+            mesh.name = originalMesh.name + "_Manaco";
 
             var uvs = mesh.uv;
             if (uvs.Length == 0)
             {
-                Debug.LogWarning($"[CustomEyeShaderCore] {smr.name} にUVが設定されていません。スキップします。");
+                Debug.LogWarning($"[Manaco] {smr.name} にUVが設定されていません。スキップします。");
                 UnityEngine.Object.DestroyImmediate(mesh);
                 return null;
             }
@@ -119,7 +119,7 @@ namespace com.kakunvr.manaco
 
             if (eyeTriangles.Count == 0)
             {
-                Debug.LogWarning($"[CustomEyeShaderCore] {smr.name}: 指定されたUV島内にポリゴンが見つかりませんでした。UV設定を確認してください。");
+                Debug.LogWarning($"[Manaco] {smr.name}: 指定されたUV島内にポリゴンが見つかりませんでした。UV設定を確認してください。");
                 UnityEngine.Object.DestroyImmediate(mesh);
                 return null;
             }
@@ -265,13 +265,13 @@ namespace com.kakunvr.manaco
 
             if (!sourceMaterial.HasProperty("_MainTex"))
             {
-                Debug.LogWarning($"[CustomEyeShaderCore] {sourceMaterial.name} に _MainTex プロパティがないため、フォールバックテクスチャのベイクをスキップします。");
+                Debug.LogWarning($"[Manaco] {sourceMaterial.name} に _MainTex プロパティがないため、フォールバックテクスチャのベイクをスキップします。");
                 return sourceMaterial;
             }
 
             if (sourceMaterial.GetTexture("_MainTex") != null)
             {
-                Debug.Log($"[CustomEyeShaderCore] {sourceMaterial.name} の _MainTex はすでに設定済みのため、ベイクをスキップします。");
+                Debug.Log($"[Manaco] {sourceMaterial.name} の _MainTex はすでに設定済みのため、ベイクをスキップします。");
                 return sourceMaterial;
             }
 
@@ -301,7 +301,7 @@ namespace com.kakunvr.manaco
             clonedMaterial.name = sourceMaterial.name + "_WithFallback";
             clonedMaterial.SetTexture("_MainTex", fallbackTex);
 
-            // Debug.Log($"[CustomEyeShaderCore] {sourceMaterial.name} のフォールバックテクスチャをベイクしました ({res}x{res})");
+            // Debug.Log($"[Manaco] {sourceMaterial.name} のフォールバックテクスチャをベイクしました ({res}x{res})");
 
             return clonedMaterial;
         }

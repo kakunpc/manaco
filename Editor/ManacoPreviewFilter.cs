@@ -8,12 +8,12 @@ using UnityEngine;
 
 namespace com.kakunvr.manaco.Editor
 {
-    public class CustomEyeShaderCorePreviewFilter : IRenderFilter
+    public class ManacoPreviewFilter : IRenderFilter
     {
         public ImmutableList<RenderGroup> GetTargetGroups(ComputeContext context)
         {
             var renderers = new HashSet<Renderer>();
-            var comps = context.GetAvatarRoots().SelectMany(root => context.GetComponentsInChildren<CustomEyeShaderCore>(root, true));
+            var comps = context.GetAvatarRoots().SelectMany(root => context.GetComponentsInChildren<Manaco>(root, true));
             foreach (var comp in comps)
             {
                 context.Observe(comp);
@@ -36,7 +36,7 @@ namespace com.kakunvr.manaco.Editor
 
         public bool IsEnabled(ComputeContext context)
         {
-            var comps = context.GetAvatarRoots().SelectMany(root => context.GetComponentsInChildren<CustomEyeShaderCore>(root, true));
+            var comps = context.GetAvatarRoots().SelectMany(root => context.GetComponentsInChildren<Manaco>(root, true));
             foreach (var comp in comps)
             {
                 context.Observe(comp);
@@ -51,23 +51,23 @@ namespace com.kakunvr.manaco.Editor
         public Task<IRenderFilterNode> Instantiate(RenderGroup group, IEnumerable<(Renderer, Renderer)> proxyPairs, ComputeContext context)
         {
             var comps = context.GetAvatarRoots()
-                .SelectMany(root => context.GetComponentsInChildren<CustomEyeShaderCore>(root, true))
+                .SelectMany(root => context.GetComponentsInChildren<Manaco>(root, true))
                 .Where(c => c.useNdmfPreview).ToList();
 
-            var pass = new CustomEyeShaderCorePass();
-            var node = new CustomEyeShaderCorePreviewNode(comps, proxyPairs, pass);
+            var pass = new ManacoPass();
+            var node = new ManacoPreviewNode(comps, proxyPairs, pass);
             return Task.FromResult<IRenderFilterNode>(node);
         }
     }
 
-    public class CustomEyeShaderCorePreviewNode : IRenderFilterNode
+    public class ManacoPreviewNode : IRenderFilterNode
     {
         public RenderAspects WhatChanged => RenderAspects.Mesh | RenderAspects.Material;
 
         private List<Mesh> _createdMeshes = new List<Mesh>();
         private Dictionary<Renderer, (Mesh, Material[])> _rendererModifications = new Dictionary<Renderer, (Mesh, Material[])>();
 
-        public CustomEyeShaderCorePreviewNode(List<CustomEyeShaderCore> comps, IEnumerable<(Renderer, Renderer)> proxyPairs, CustomEyeShaderCorePass pass)
+        public ManacoPreviewNode(List<Manaco> comps, IEnumerable<(Renderer, Renderer)> proxyPairs, ManacoPass pass)
         {
             var proxyMap = proxyPairs.ToDictionary(p => p.Item1, p => p.Item2);
 

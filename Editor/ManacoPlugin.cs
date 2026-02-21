@@ -4,22 +4,22 @@ using com.kakunvr.manaco.Editor;
 
 // NDMFへのプラグイン登録。
 // GeneratingフェーズはModularAvatarの処理後、最終ビルド前に実行されます。
-[assembly: ExportsPlugin(typeof(CustomEyeShaderCorePlugin))]
+[assembly: ExportsPlugin(typeof(ManacoPlugin))]
 
 namespace com.kakunvr.manaco
 {
-    public class CustomEyeShaderCorePlugin : Plugin<CustomEyeShaderCorePlugin>
+    public class ManacoPlugin : Plugin<ManacoPlugin>
     {
-        public override string QualifiedName => "jp.kakunvr.custom-eye-shader-core";
-        public override string DisplayName => "Custom Eye Shader Core";
+        public override string QualifiedName => "com.kakunvr.manaco";
+        public override string DisplayName => "MANACO";
 
         protected override void Configure()
         {
             // ModularAvatarのTransformingフェーズ後に実行するためGeneratingを使用
             InPhase(BuildPhase.Generating)
                 .AfterPlugin("nadena.dev.modular-avatar")
-                .Run("Apply Custom Eye SubMesh", ctx => new CustomEyeShaderCorePass().Execute(ctx))
-                .PreviewingWith(new CustomEyeShaderCorePreviewFilter());
+                .Run("Apply Custom Eye SubMesh", ctx => new ManacoPass().Execute(ctx))
+                .PreviewingWith(new ManacoPreviewFilter());
         }
     }
 }

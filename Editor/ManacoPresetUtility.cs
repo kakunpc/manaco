@@ -4,31 +4,31 @@ using UnityEngine;
 
 namespace com.kakunvr.manaco.Editor
 {
-    public static class CustomEyeShaderCorePresetUtility
+    public static class ManacoPresetUtility
     {
-        [MenuItem("CONTEXT/CustomEyeShaderCore/Create Avatar Preset")]
+        [MenuItem("CONTEXT/Manaco/Create Avatar Preset")]
         public static void CreatePreset(MenuCommand command)
         {
-            var comp = command.context as CustomEyeShaderCore;
+            var comp = command.context as Manaco;
             if (comp == null) return;
 
-            var preset = ScriptableObject.CreateInstance<CustomEyeShaderPreset>();
+            var preset = ScriptableObject.CreateInstance<ManacoPreset>();
             preset.avatarName = comp.gameObject.name;
 
             foreach (var region in comp.eyeRegions)
             {
                 if (region.targetRenderer == null) continue;
 
-                var presetRegion = new CustomEyeShaderPreset.PresetRegion
+                var presetRegion = new ManacoPreset.PresetRegion
                 {
                     eyeType = region.eyeType,
                     targetRendererName = region.targetRenderer.name,
                     materialIndex = region.materialIndex,
-                    eyePolygonRegions = new CustomEyeShaderCore.UVPolygonRegion[region.eyePolygonRegions.Length]
+                    eyePolygonRegions = new Manaco.UVPolygonRegion[region.eyePolygonRegions.Length]
                 };
                 for (int i = 0; i < region.eyePolygonRegions.Length; i++)
                 {
-                    presetRegion.eyePolygonRegions[i] = new CustomEyeShaderCore.UVPolygonRegion
+                    presetRegion.eyePolygonRegions[i] = new Manaco.UVPolygonRegion
                     {
                         uvPoints = region.eyePolygonRegions[i].uvPoints.Clone() as Vector2[]
                     };
@@ -36,10 +36,10 @@ namespace com.kakunvr.manaco.Editor
                 preset.regions.Add(presetRegion);
             }
 
-            string folderPath = "Assets/ちゃとらとりー/CustomEyeShaderCore/Presets";
+            string folderPath = "Assets/ちゃとらとりー/Manaco/Presets";
             if (!AssetDatabase.IsValidFolder(folderPath))
             {
-                AssetDatabase.CreateFolder("Assets/ちゃとらとりー/CustomEyeShaderCore", "Presets");
+                AssetDatabase.CreateFolder("Assets/ちゃとらとりー/Manaco", "Presets");
             }
 
             string defaultName = $"{preset.avatarName}_EyePreset.asset";
@@ -50,7 +50,7 @@ namespace com.kakunvr.manaco.Editor
             AssetDatabase.CreateAsset(preset, path);
             AssetDatabase.SaveAssets();
 
-            Debug.Log($"[CustomEyeShaderCore] Preset saved to {path}");
+            Debug.Log($"[Manaco] Preset saved to {path}");
             EditorGUIUtility.PingObject(preset);
         }
     }

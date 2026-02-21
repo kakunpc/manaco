@@ -3,8 +3,8 @@ using UnityEngine;
 
 namespace com.kakunvr.manaco.Editor
 {
-    [CustomEditor(typeof(CustomEyeShaderCore))]
-    public class CustomEyeShaderCoreEditor : UnityEditor.Editor
+    [CustomEditor(typeof(Manaco))]
+    public class ManacoEditor : UnityEditor.Editor
     {
         private SerializedProperty _eyeRegionsProp;
         private SerializedProperty _useNdmfPreviewProp;
@@ -17,24 +17,24 @@ namespace com.kakunvr.manaco.Editor
             LoadShaders();
         }
 
-        private CustomEyeShaderPreset[] _availablePresets;
+        private ManacoPreset[] _availablePresets;
         private string[] _presetNames;
         private int _selectedPresetIndex = 0;
 
         private void LoadPresets()
         {
-            string[] guids = AssetDatabase.FindAssets("t:CustomEyeShaderPreset");
-            _availablePresets = new CustomEyeShaderPreset[guids.Length];
+            string[] guids = AssetDatabase.FindAssets("t:ManacoPreset");
+            _availablePresets = new ManacoPreset[guids.Length];
             _presetNames = new string[guids.Length + 1];
             _presetNames[0] = "--- プリセットを選択して適用 ---";
 
-            var comp = target as CustomEyeShaderCore;
+            var comp = target as Manaco;
             _selectedPresetIndex = 0;
 
             for (int i = 0; i < guids.Length; i++)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-                _availablePresets[i] = AssetDatabase.LoadAssetAtPath<CustomEyeShaderPreset>(path);
+                _availablePresets[i] = AssetDatabase.LoadAssetAtPath<ManacoPreset>(path);
                 _presetNames[i + 1] = _availablePresets[i].avatarName;
 
                 if (comp != null && comp.appliedAvatarPreset == _availablePresets[i])
@@ -44,24 +44,24 @@ namespace com.kakunvr.manaco.Editor
             }
         }
 
-        private CustomEyeShaderDefinition[] _availableShaders;
+        private ManacoShaderDefinition[] _availableShaders;
         private string[] _shaderNames;
         private int _selectedShaderIndex = 0;
 
         private void LoadShaders()
         {
-            string[] guids = AssetDatabase.FindAssets("t:CustomEyeShaderDefinition");
-            _availableShaders = new CustomEyeShaderDefinition[guids.Length];
+            string[] guids = AssetDatabase.FindAssets("t:ManacoShaderDefinition");
+            _availableShaders = new ManacoShaderDefinition[guids.Length];
             _shaderNames = new string[guids.Length + 1];
             _shaderNames[0] = "--- シェーダーを選択して適用 ---";
 
-            var comp = target as CustomEyeShaderCore;
+            var comp = target as Manaco;
             _selectedShaderIndex = 0;
 
             for (int i = 0; i < guids.Length; i++)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-                _availableShaders[i] = AssetDatabase.LoadAssetAtPath<CustomEyeShaderDefinition>(path);
+                _availableShaders[i] = AssetDatabase.LoadAssetAtPath<ManacoShaderDefinition>(path);
                 _shaderNames[i + 1] = _availableShaders[i].shaderName;
 
                 if (comp != null && comp.appliedShaderDef == _availableShaders[i])
@@ -71,7 +71,7 @@ namespace com.kakunvr.manaco.Editor
             }
         }
 
-        private CustomEyeShaderPreset _selectedPreset;
+        private ManacoPreset _selectedPreset;
 
         public override void OnInspectorGUI()
         {
@@ -85,7 +85,7 @@ namespace com.kakunvr.manaco.Editor
                 _selectedPresetIndex = newIndex;
                 if (_selectedPresetIndex > 0)
                 {
-                    ApplyPreset((CustomEyeShaderCore)target, _availablePresets[_selectedPresetIndex - 1]);
+                    ApplyPreset((Manaco)target, _availablePresets[_selectedPresetIndex - 1]);
                 }
             }
             if (GUILayout.Button("更新", GUILayout.Width(40)))
@@ -104,7 +104,7 @@ namespace com.kakunvr.manaco.Editor
                 _selectedShaderIndex = newShaderIndex;
                 if (_selectedShaderIndex > 0)
                 {
-                    ApplyShader((CustomEyeShaderCore)target, _availableShaders[_selectedShaderIndex - 1]);
+                    ApplyShader((Manaco)target, _availableShaders[_selectedShaderIndex - 1]);
                 }
             }
             if (GUILayout.Button("更新", GUILayout.Width(40)))
@@ -122,7 +122,7 @@ namespace com.kakunvr.manaco.Editor
             _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, "上級設定", true, EditorStyles.foldoutHeader);
             if (_showAdvanced)
             {
-                var comp = (CustomEyeShaderCore)target;
+                var comp = (Manaco)target;
 
                 for (int i = 0; i < _eyeRegionsProp.arraySize; i++)
                 {
@@ -138,9 +138,9 @@ namespace com.kakunvr.manaco.Editor
             serializedObject.ApplyModifiedProperties();
         }
 
-        private void ApplyPreset(CustomEyeShaderCore comp, CustomEyeShaderPreset preset)
+        private void ApplyPreset(Manaco comp, ManacoPreset preset)
         {
-            Undo.RecordObject(comp, "Apply CustomEyeShaderCore Preset");
+            Undo.RecordObject(comp, "Apply Manaco Preset");
 
             comp.appliedAvatarPreset = preset;
             comp.eyeRegions.Clear();
@@ -160,15 +160,15 @@ namespace com.kakunvr.manaco.Editor
 
             foreach (var pr in preset.regions)
             {
-                var region = new CustomEyeShaderCore.EyeRegion
+                var region = new Manaco.EyeRegion
                 {
                     eyeType = pr.eyeType,
                     materialIndex = pr.materialIndex,
-                    eyePolygonRegions = new CustomEyeShaderCore.UVPolygonRegion[pr.eyePolygonRegions.Length]
+                    eyePolygonRegions = new Manaco.UVPolygonRegion[pr.eyePolygonRegions.Length]
                 };
                 for (int i = 0; i < pr.eyePolygonRegions.Length; i++)
                 {
-                    region.eyePolygonRegions[i] = new CustomEyeShaderCore.UVPolygonRegion
+                    region.eyePolygonRegions[i] = new Manaco.UVPolygonRegion
                     {
                         uvPoints = pr.eyePolygonRegions[i].uvPoints.Clone() as Vector2[]
                     };
@@ -196,26 +196,26 @@ namespace com.kakunvr.manaco.Editor
             serializedObject.Update();
             EditorUtility.SetDirty(comp);
 
-            Debug.Log($"[CustomEyeShaderCore] Applied preset: {preset.avatarName}");
+            Debug.Log($"[Manaco] Applied preset: {preset.avatarName}");
         }
 
-        private void ApplyShader(CustomEyeShaderCore comp, CustomEyeShaderDefinition shaderDef)
+        private void ApplyShader(Manaco comp, ManacoShaderDefinition shaderDef)
         {
-            Undo.RecordObject(comp, "Apply CustomEyeShader Definition");
+            Undo.RecordObject(comp, "Apply Manaco Shader Definition");
 
             comp.appliedShaderDef = shaderDef;
 
             foreach (var region in comp.eyeRegions)
             {
-                if (region.eyeType == CustomEyeShaderCore.EyeType.Left)
+                if (region.eyeType == Manaco.EyeType.Left)
                 {
                     region.customMaterial = shaderDef.leftEyeMaterial;
                 }
-                else if (region.eyeType == CustomEyeShaderCore.EyeType.Right)
+                else if (region.eyeType == Manaco.EyeType.Right)
                 {
                     region.customMaterial = shaderDef.rightEyeMaterial;
                 }
-                else if (region.eyeType == CustomEyeShaderCore.EyeType.Both)
+                else if (region.eyeType == Manaco.EyeType.Both)
                 {
                     region.customMaterial = shaderDef.bothEyeMaterial;
                 }
@@ -224,10 +224,10 @@ namespace com.kakunvr.manaco.Editor
             serializedObject.Update();
             EditorUtility.SetDirty(comp);
 
-            Debug.Log($"[CustomEyeShaderCore] Applied shader: {shaderDef.shaderName}");
+            Debug.Log($"[Manaco] Applied shader: {shaderDef.shaderName}");
         }
 
-        private bool DrawEyeRegionSummary(CustomEyeShaderCore comp, SerializedProperty element, int index)
+        private bool DrawEyeRegionSummary(Manaco comp, SerializedProperty element, int index)
         {
             var eyeTypeProp             = element.FindPropertyRelative("eyeType");
             var rendererProp            = element.FindPropertyRelative("targetRenderer");
@@ -238,8 +238,8 @@ namespace com.kakunvr.manaco.Editor
             var fallbackResolutionProp  = element.FindPropertyRelative("fallbackTextureResolution");
 
             var smr = rendererProp.objectReferenceValue as SkinnedMeshRenderer;
-            var eyeTypeEnum = (CustomEyeShaderCore.EyeType)eyeTypeProp.enumValueIndex;
-            string eyeTypeStr = eyeTypeEnum == CustomEyeShaderCore.EyeType.Both ? "両目" : (eyeTypeEnum == CustomEyeShaderCore.EyeType.Left ? "左目" : "右目");
+            var eyeTypeEnum = (Manaco.EyeType)eyeTypeProp.enumValueIndex;
+            string eyeTypeStr = eyeTypeEnum == Manaco.EyeType.Both ? "両目" : (eyeTypeEnum == Manaco.EyeType.Left ? "左目" : "右目");
             string label = smr != null ? $"[{index}] ({eyeTypeStr})  ({smr.name})" : $"[{index}]({eyeTypeStr})";
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
@@ -284,7 +284,7 @@ namespace com.kakunvr.manaco.Editor
 
             // このリージョン専用のUVエディタを開くボタン
             if (GUILayout.Button("UV エディタを開く"))
-                CustomEyeShaderCoreWindow.OpenWith(comp, index);
+                ManacoWindow.OpenWith(comp, index);
 
             EditorGUILayout.EndVertical();
             EditorGUILayout.Space(4);

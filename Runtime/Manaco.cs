@@ -9,9 +9,9 @@ namespace com.kakunvr.manaco
     /// アバターの目のポリゴンに対してカスタムシェーダーを適用するModularAvatarコンポーネント。
     /// 対象のSkinnedMeshRendererと、左目・右目に対応するUV範囲を指定します。
     /// </summary>
-    [AddComponentMenu("ちゃとらとりー/Custom Eye Shader Core")]
+    [AddComponentMenu("ちゃとらとりー/Manaco")]
     [DisallowMultipleComponent]
-    public class CustomEyeShaderCore : MonoBehaviour, IEditorOnly
+    public class Manaco : MonoBehaviour, IEditorOnly
     {
         public enum EyeType
         {
@@ -59,9 +59,9 @@ namespace com.kakunvr.manaco
         public bool useNdmfPreview = false;
 
         [HideInInspector]
-        public CustomEyeShaderPreset appliedAvatarPreset;
+        public ManacoPreset appliedAvatarPreset;
 
         [HideInInspector]
-        public CustomEyeShaderDefinition appliedShaderDef;
+        public ManacoShaderDefinition appliedShaderDef;
     }
 }

@@ -4,14 +4,14 @@ using UnityEngine;
 
 namespace com.kakunvr.manaco
 {
-    [CreateAssetMenu(fileName = "NewCustomEyeShaderPreset", menuName = "ちゃとらとりー/CustomEyeShader Preset")]
-    public class CustomEyeShaderPreset : ScriptableObject
+    [CreateAssetMenu(fileName = "NewManacoPreset", menuName = "ちゃとらとりー/Manaco Preset")]
+    public class ManacoPreset : ScriptableObject
     {
         [Serializable]
         public class PresetRegion
         {
             [Tooltip("目の対象")]
-            public CustomEyeShaderCore.EyeType eyeType = CustomEyeShaderCore.EyeType.Both;
+            public Manaco.EyeType eyeType = Manaco.EyeType.Both;
 
             [Tooltip("対象のMeshRendererのオブジェクト名")]
             public string targetRendererName;
@@ -20,7 +20,7 @@ namespace com.kakunvr.manaco
             public int materialIndex;
 
             [Tooltip("目のポリゴンを特定するためのUV島")]
-            public CustomEyeShaderCore.UVPolygonRegion[] eyePolygonRegions = Array.Empty<CustomEyeShaderCore.UVPolygonRegion>();
+            public Manaco.UVPolygonRegion[] eyePolygonRegions = Array.Empty<Manaco.UVPolygonRegion>();
         }
 
         [Tooltip("アバター名")]

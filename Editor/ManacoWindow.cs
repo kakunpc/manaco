@@ -8,10 +8,10 @@ namespace com.kakunvr.manaco.Editor
     /// 1つのEyeRegionに対してUV領域をインタラクティブに設定するEditorWindow。
     /// テクスチャ上で左クリック → UVIslandを追加、右クリック → 削除。
     /// </summary>
-    public class CustomEyeShaderCoreWindow : EditorWindow
+    public class ManacoWindow : EditorWindow
     {
         // ---- 対象 ----
-        private CustomEyeShaderCore _target;
+        private Manaco _target;
         private SerializedObject _so;
         private int _regionIndex;
 
@@ -31,9 +31,9 @@ namespace com.kakunvr.manaco.Editor
         //  開き方（Inspectorからのみ）
         // ============================================================
 
-        public static void OpenWith(CustomEyeShaderCore target, int regionIndex)
+        public static void OpenWith(Manaco target, int regionIndex)
         {
-            var w = GetWindow<CustomEyeShaderCoreWindow>("Eye UV Editor");
+            var w = GetWindow<ManacoWindow>("Eye UV Editor");
             w.SetRegion(target, regionIndex);
             w.Show();
         }
@@ -42,7 +42,7 @@ namespace com.kakunvr.manaco.Editor
         //  ターゲット設定
         // ============================================================
 
-        private void SetRegion(CustomEyeShaderCore target, int regionIndex)
+        private void SetRegion(Manaco target, int regionIndex)
         {
             _target = target;
             _regionIndex = regionIndex;
