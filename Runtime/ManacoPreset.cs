@@ -18,7 +18,7 @@ namespace com.kakunvr.manaco
             [Tooltip("目のテクスチャが含まれるマテリアルスロット")]
             public int materialIndex;
 
-            [Tooltip("目のポリゴンを特定するためのUV島")]
+            [Tooltip("目のポリゴンを特定するためのUV Island")]
             public Manaco.UVPolygonRegion[] eyePolygonRegions = Array.Empty<Manaco.UVPolygonRegion>();
         }
 

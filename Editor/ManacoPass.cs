@@ -119,7 +119,7 @@ namespace com.kakunvr.manaco
 
             if (eyeTriangles.Count == 0)
             {
-                Debug.LogWarning($"[Manaco] {smr.name}: 指定されたUV島内にポリゴンが見つかりませんでした。UV設定を確認してください。");
+                Debug.LogWarning($"[Manaco] {smr.name}: 指定されたUV Island内にポリゴンが見つかりませんでした。UV設定を確認してください。");
                 UnityEngine.Object.DestroyImmediate(mesh);
                 return null;
             }

@@ -42,14 +42,14 @@ namespace com.kakunvr.manaco.Editor
             }
         }
 
-        private ManacoShaderDefinition[] _availableShaders;
+        private ManacoMaterialDefinition[] _availableShaders;
         private string[] _shaderNames;
         private int _selectedShaderIndex = 0;
 
         private void LoadShaders()
         {
-            string[] guids = AssetDatabase.FindAssets("t:ManacoShaderDefinition");
-            _availableShaders = new ManacoShaderDefinition[guids.Length];
+            string[] guids = AssetDatabase.FindAssets("t:ManacoMaterialDefinition");
+            _availableShaders = new ManacoMaterialDefinition[guids.Length];
             _shaderNames = new string[guids.Length + 1];
             _shaderNames[0] = ManacoLocale.T("Prompt.SelectMaterial");
 
@@ -59,7 +59,7 @@ namespace com.kakunvr.manaco.Editor
             for (int i = 0; i < guids.Length; i++)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-                _availableShaders[i] = AssetDatabase.LoadAssetAtPath<ManacoShaderDefinition>(path);
+                _availableShaders[i] = AssetDatabase.LoadAssetAtPath<ManacoMaterialDefinition>(path);
                 _shaderNames[i + 1] = _availableShaders[i].shaderName;
 
                 if (comp != null && comp.appliedShaderDef == _availableShaders[i])
@@ -194,7 +194,7 @@ namespace com.kakunvr.manaco.Editor
             EditorUtility.SetDirty(comp);
         }
 
-        private void ApplyShader(Manaco comp, ManacoShaderDefinition shaderDef)
+        private void ApplyShader(Manaco comp, ManacoMaterialDefinition shaderDef)
         {
             Undo.RecordObject(comp, "Apply Manaco Shader Definition");
 

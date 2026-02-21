@@ -2,8 +2,8 @@ using UnityEngine;
 
 namespace com.kakunvr.manaco
 {
-    [CreateAssetMenu(fileName = "NewManacoShaderDef", menuName = "ちゃとらとりー/Manaco Shader Definition")]
-    public class ManacoShaderDefinition : ScriptableObject
+    [CreateAssetMenu(fileName = "NewManacoMaterialDef", menuName = "ちゃとらとりー/Manaco Material Definition")]
+    public class ManacoMaterialDefinition : ScriptableObject
     {
         [Tooltip("シェーダーの表示名")]
         public string shaderName = "New Shader";

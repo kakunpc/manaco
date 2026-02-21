@@ -26,6 +26,8 @@ namespace com.kakunvr.manaco.Editor
                             renderers.Add(region.targetRenderer);
                             context.Observe(region.targetRenderer);
                         }
+                        if (region.customMaterial != null)
+                            context.Observe(region.customMaterial);
                     }
                 }
             }
@@ -53,6 +55,16 @@ namespace com.kakunvr.manaco.Editor
             var comps = context.GetAvatarRoots()
                 .SelectMany(root => context.GetComponentsInChildren<Manaco>(root, true))
                 .Where(c => c.useNdmfPreview).ToList();
+
+            foreach (var comp in comps)
+            {
+                context.Observe(comp);
+                foreach (var region in comp.eyeRegions)
+                {
+                    if (region.customMaterial != null)
+                        context.Observe(region.customMaterial);
+                }
+            }
 
             var pass = new ManacoPass();
             var node = new ManacoPreviewNode(comps, proxyPairs, pass);

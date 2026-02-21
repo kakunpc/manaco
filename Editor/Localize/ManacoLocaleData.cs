@@ -7,7 +7,6 @@ namespace com.kakunvr.manaco.Editor
     /// <summary>
     /// Manacoエディタ拡張の言語データを保持するScriptableObject。
     /// </summary>
-    [CreateAssetMenu(fileName = "NewLocale", menuName = "ちゃとらとりー/Manaco Locale")]
     public class ManacoLocaleData : ScriptableObject
     {
         [Tooltip("言語の表示名（例: 日本語, English）")]

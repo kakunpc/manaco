@@ -19,7 +19,7 @@ namespace com.kakunvr.manaco.Editor
         {
             CreateDefaultLocaleAssets(force: true);
             ManacoLocale.Reload();
-            Debug.Log("[Manaco] Locale assets recreated.");
+            // Debug.Log("[Manaco] Locale assets recreated.");
         }
 
         private static void CreateDefaultLocaleAssetsIfNeeded()

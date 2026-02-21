@@ -23,14 +23,13 @@ namespace com.kakunvr.manaco
         [Serializable]
         public class UVPolygonRegion
         {
-            [Tooltip("この島のUV頂点座標")]
             public Vector2[] uvPoints = Array.Empty<Vector2>();
         }
 
         [Serializable]
         public class EyeRegion
         {
-            [Tooltip("目の対象")]
+            [Tooltip("対象の目")]
             public EyeType eyeType = EyeType.Both;
 
             [Tooltip("目のポリゴンが含まれるSkinnedMeshRenderer")]
@@ -39,7 +38,7 @@ namespace com.kakunvr.manaco
             [Tooltip("目のテクスチャが含まれるマテリアルスロット")]
             public int materialIndex;
 
-            [Tooltip("目のポリゴンを特定するためのUV島")]
+            [Tooltip("目のポリゴンを特定するためのUV Island")]
             public UVPolygonRegion[] eyePolygonRegions = Array.Empty<UVPolygonRegion>();
 
             [Tooltip("割り当てるカスタムマテリアル")]
@@ -62,6 +61,6 @@ namespace com.kakunvr.manaco
         public ManacoPreset appliedAvatarPreset;
 
         [HideInInspector]
-        public ManacoShaderDefinition appliedShaderDef;
+        public ManacoMaterialDefinition appliedShaderDef;
     }
 }

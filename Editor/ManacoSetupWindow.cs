@@ -7,13 +7,13 @@ namespace com.kakunvr.manaco.Editor
     {
         private GameObject _targetAvatar;
         private ManacoPreset _avatarPreset;
-        private ManacoShaderDefinition _shaderPreset;
+        private ManacoMaterialDefinition _shaderPreset;
 
         private ManacoPreset[] _availablePresets;
         private string[] _presetNames;
         private int _selectedPresetIndex = 0;
 
-        private ManacoShaderDefinition[] _availableShaders;
+        private ManacoMaterialDefinition[] _availableShaders;
         private string[] _shaderNames;
         private int _selectedShaderIndex = 0;
 
@@ -50,15 +50,15 @@ namespace com.kakunvr.manaco.Editor
 
         private void LoadShaders()
         {
-            string[] guids = AssetDatabase.FindAssets("t:ManacoShaderDefinition");
-            _availableShaders = new ManacoShaderDefinition[guids.Length];
+            string[] guids = AssetDatabase.FindAssets("t:ManacoMaterialDefinition");
+            _availableShaders = new ManacoMaterialDefinition[guids.Length];
             _shaderNames = new string[guids.Length + 1];
             _shaderNames[0] = ManacoLocale.T("Prompt.SelectMatPreset");
 
             for (int i = 0; i < guids.Length; i++)
             {
                 string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-                _availableShaders[i] = AssetDatabase.LoadAssetAtPath<ManacoShaderDefinition>(path);
+                _availableShaders[i] = AssetDatabase.LoadAssetAtPath<ManacoMaterialDefinition>(path);
                 _shaderNames[i + 1] = _availableShaders[i].shaderName;
             }
         }
