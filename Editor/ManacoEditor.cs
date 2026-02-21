@@ -53,7 +53,7 @@ namespace com.kakunvr.manaco.Editor
             string[] guids = AssetDatabase.FindAssets("t:ManacoShaderDefinition");
             _availableShaders = new ManacoShaderDefinition[guids.Length];
             _shaderNames = new string[guids.Length + 1];
-            _shaderNames[0] = "--- シェーダーを選択して適用 ---";
+            _shaderNames[0] = "--- マテリアルを選択して適用 ---";
 
             var comp = target as Manaco;
             _selectedShaderIndex = 0;
@@ -95,10 +95,10 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.EndHorizontal();
 
             EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField("カスタムシェーダー", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField("カスタムマテリアル", EditorStyles.boldLabel);
 
             EditorGUILayout.BeginHorizontal();
-            int newShaderIndex = EditorGUILayout.Popup("Apply Shader", _selectedShaderIndex, _shaderNames);
+            int newShaderIndex = EditorGUILayout.Popup("Apply Material", _selectedShaderIndex, _shaderNames);
             if (newShaderIndex != _selectedShaderIndex)
             {
                 _selectedShaderIndex = newShaderIndex;
@@ -196,7 +196,7 @@ namespace com.kakunvr.manaco.Editor
             serializedObject.Update();
             EditorUtility.SetDirty(comp);
 
-            Debug.Log($"[Manaco] Applied preset: {preset.avatarName}");
+            // Debug.Log($"[Manaco] Applied preset: {preset.avatarName}");
         }
 
         private void ApplyShader(Manaco comp, ManacoShaderDefinition shaderDef)
@@ -224,7 +224,7 @@ namespace com.kakunvr.manaco.Editor
             serializedObject.Update();
             EditorUtility.SetDirty(comp);
 
-            Debug.Log($"[Manaco] Applied shader: {shaderDef.shaderName}");
+            // Debug.Log($"[Manaco] Applied shader: {shaderDef.shaderName}");
         }
 
         private bool DrawEyeRegionSummary(Manaco comp, SerializedProperty element, int index)

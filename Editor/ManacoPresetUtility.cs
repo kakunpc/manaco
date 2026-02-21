@@ -36,21 +36,14 @@ namespace com.kakunvr.manaco.Editor
                 preset.regions.Add(presetRegion);
             }
 
-            string folderPath = "Assets/ちゃとらとりー/Manaco/Presets";
-            if (!AssetDatabase.IsValidFolder(folderPath))
-            {
-                AssetDatabase.CreateFolder("Assets/ちゃとらとりー/Manaco", "Presets");
-            }
-
             string defaultName = $"{preset.avatarName}_EyePreset.asset";
-            string path = EditorUtility.SaveFilePanelInProject("Save Avatar Preset", defaultName, "asset", "Save preset to Presets folder", folderPath);
+            string path = EditorUtility.SaveFilePanelInProject("Save Avatar Preset", defaultName, "asset", "Save preset to Presets folder");
 
             if (string.IsNullOrEmpty(path)) return;
 
             AssetDatabase.CreateAsset(preset, path);
             AssetDatabase.SaveAssets();
 
-            Debug.Log($"[Manaco] Preset saved to {path}");
             EditorGUIUtility.PingObject(preset);
         }
     }

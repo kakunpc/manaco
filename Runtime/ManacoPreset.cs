@@ -4,7 +4,6 @@ using UnityEngine;
 
 namespace com.kakunvr.manaco
 {
-    [CreateAssetMenu(fileName = "NewManacoPreset", menuName = "ちゃとらとりー/Manaco Preset")]
     public class ManacoPreset : ScriptableObject
     {
         [Serializable]
