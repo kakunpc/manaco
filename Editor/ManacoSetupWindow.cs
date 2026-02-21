@@ -59,7 +59,7 @@ namespace com.kakunvr.manaco.Editor
             {
                 string path = AssetDatabase.GUIDToAssetPath(guids[i]);
                 _availableShaders[i] = AssetDatabase.LoadAssetAtPath<ManacoMaterialDefinition>(path);
-                _shaderNames[i + 1] = _availableShaders[i].shaderName;
+                _shaderNames[i + 1] = _availableShaders[i].name;
             }
         }
 

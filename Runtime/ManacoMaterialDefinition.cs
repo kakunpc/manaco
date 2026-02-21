@@ -5,8 +5,8 @@ namespace com.kakunvr.manaco
     [CreateAssetMenu(fileName = "NewManacoMaterialDef", menuName = "ちゃとらとりー/Manaco Material Definition")]
     public class ManacoMaterialDefinition : ScriptableObject
     {
-        [Tooltip("シェーダーの表示名")]
-        public string shaderName = "New Shader";
+        [Tooltip("表示名")]
+        public string name = "New Material";
 
         [Tooltip("左目用のマテリアル")]
         public Material leftEyeMaterial;
