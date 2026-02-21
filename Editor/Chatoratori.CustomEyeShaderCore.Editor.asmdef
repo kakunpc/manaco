@@ -1,0 +1,20 @@
+{
+    "name": "Chatoratori.CustomEyeShaderCore.Editor",
+    "rootNamespace": "Chatoratori.CustomEyeShaderCore.Editor",
+    "references": [
+        "Chatoratori.CustomEyeShaderCore.Runtime",
+        "nadena.dev.ndmf",
+        "VRC.SDKBase"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
