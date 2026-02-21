@@ -21,7 +21,8 @@ jobs:
       - name: Update version in package.json
         env:
           VERSION: ${{ steps.vars.outputs.version }}
-        run: sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" package.json
+        run: |
+          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" package.json
 
       - name: Create VCC ZIP
         env:
