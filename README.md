@@ -14,7 +14,7 @@ ModularAvatar（NDMF）を利用して、非破壊で目のマテリアルを切
 2. VCCが起動し「Add Repository」ダイアログが表示されます。内容を確認したら「I Understand, Add Repository」をクリックします。
    - VCCが起動しない・インストール画面が表示されない場合は、VCCのインストールまたはバージョンアップを行ってください。
 3. プロジェクトの「Manage Project」をクリックします。
-4. 一覧から「Manaco（まなこ）」を見つけ、右側の ＋ ボタンをクリックします。
+4. 一覧から「MANACO」を見つけ、右側の ＋ ボタンをクリックします。
 
 <img width="623" height="440" alt="248711958-2f3dae16-e7e3-4a40-b19f-daaa3530315d" src="https://github.com/user-attachments/assets/211021e2-7aca-48a7-a9ad-c688c9040af1" />
 
