@@ -16,7 +16,7 @@ ModularAvatar（NDMF）を利用して、非破壊で目のマテリアルを切
 3. プロジェクトの「Manage Project」をクリックします。
 4. 一覧から「Manaco（まなこ）」を見つけ、右側の ＋ ボタンをクリックします。
 
-![](https://github.com/kakunpc/vrc_facial_lock_generator/assets/15257475/2f3dae16-e7e3-4a40-b19f-daaa3530315d)
+<img width="623" height="440" alt="248711958-2f3dae16-e7e3-4a40-b19f-daaa3530315d" src="https://github.com/user-attachments/assets/211021e2-7aca-48a7-a9ad-c688c9040af1" />
 
 ### UnityPackageでインストール
 
