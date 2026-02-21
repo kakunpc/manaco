@@ -1,0 +1,15 @@
+{
+  "name": "com.kakunvr.manaco",
+  "displayName": "MANACO",
+  "version": "1.0.0",
+  "unity": "2022.3",
+  "description": "Material Assign Non-destructive Assistant for Customization Operations",
+  "vpmDependencies": {
+    "nadena.dev.ndmf": ">=1.8.0 <2.0.0",
+    "com.vrchat.avatars": ">=3.7.0 <3.11.0"
+  },
+  "author": {
+    "name": "かーばんくる",
+    "url": "https://kakunvr.kakunpc.com/"
+  }
+}
