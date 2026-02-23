@@ -155,7 +155,7 @@ namespace com.kakunvr.manaco.Editor
             var prevActive = RenderTexture.active;
             RenderTexture.active = rt;
 
-            var tex2d = new Texture2D(res, res, TextureFormat.RGBA32, true);
+            var tex2d = new Texture2D(res, res, TextureFormat.RGBA32, false);
             tex2d.ReadPixels(new Rect(0, 0, res, res), 0, 0);
             tex2d.Apply(true);
             tex2d.name = src.name + "_EyeExtract";

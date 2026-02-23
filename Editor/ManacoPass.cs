@@ -309,7 +309,7 @@ namespace com.kakunvr.manaco
             var prevActive = RenderTexture.active;
             RenderTexture.active = rt;
 
-            var fallbackTex = new Texture2D(res, res, TextureFormat.RGBA32, true);
+            var fallbackTex = new Texture2D(res, res, TextureFormat.RGBA32, false);
             fallbackTex.ReadPixels(new Rect(0, 0, res, res), 0, 0);
             fallbackTex.Apply(true);
             fallbackTex.name = sourceMaterial.name + "_Fallback";
