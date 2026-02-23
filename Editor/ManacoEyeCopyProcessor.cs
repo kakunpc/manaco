@@ -10,20 +10,24 @@ namespace com.kakunvr.manaco.Editor
     /// </summary>
     public static class ManacoEyeCopyProcessor
     {
-        public static void PrepareEyeCopyMaterial(Manaco.EyeRegion region)
+        /// <summary>
+        /// CopyEyeFromAvatar モード用マテリアルを生成して返す。
+        /// region.customMaterial には書き込まない（呼び出し側が管理する）。
+        /// </summary>
+        public static Material PrepareEyeCopyMaterial(Manaco.EyeRegion region)
         {
             // 1. sourceRenderer / sourceMesh / sourceMaterial を取得・検証
             if (region.sourceRenderer == null)
             {
                 Debug.LogWarning("[Manaco] CopyEyeFromAvatar: sourceRenderer が未設定です。スキップします。");
-                return;
+                return null;
             }
 
             var sourceMesh = region.sourceRenderer.sharedMesh;
             if (sourceMesh == null)
             {
                 Debug.LogWarning("[Manaco] CopyEyeFromAvatar: sourceRenderer の sharedMesh が null です。スキップします。");
-                return;
+                return null;
             }
 
             var sourceMaterials = region.sourceRenderer.sharedMaterials;
@@ -32,13 +36,13 @@ namespace com.kakunvr.manaco.Editor
             if (sourceMaterial == null)
             {
                 Debug.LogWarning("[Manaco] CopyEyeFromAvatar: sourceMaterial が null です。スキップします。");
-                return;
+                return null;
             }
 
             if (region.sourceEyePolygonRegions == null || region.sourceEyePolygonRegions.Length == 0)
             {
                 Debug.LogWarning("[Manaco] CopyEyeFromAvatar: sourceEyePolygonRegions が空です。スキップします。");
-                return;
+                return null;
             }
 
             // 2. sourceEyePolygonRegions → QuantizeUV でセット化
@@ -55,7 +59,7 @@ namespace com.kakunvr.manaco.Editor
             if (uvs.Length == 0)
             {
                 Debug.LogWarning("[Manaco] CopyEyeFromAvatar: sourceMesh にUVがありません。スキップします。");
-                return;
+                return null;
             }
 
             int sourceSubIdx = Mathf.Clamp(region.sourceMaterialIndex, 0, sourceMesh.subMeshCount - 1);
@@ -77,7 +81,7 @@ namespace com.kakunvr.manaco.Editor
             if (eyeVertSet.Count == 0)
             {
                 Debug.LogWarning("[Manaco] CopyEyeFromAvatar: ソースの目頂点が見つかりませんでした。UV設定を確認してください。");
-                return;
+                return null;
             }
 
             // 4. 目頂点の UV AABB を計算
@@ -122,7 +126,7 @@ namespace com.kakunvr.manaco.Editor
                 }
             }
 
-            region.customMaterial = clonedMat;
+            return clonedMat;
         }
 
         /// <summary>

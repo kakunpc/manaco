@@ -17,7 +17,10 @@ namespace com.kakunvr.manaco
         {
             Both,
             Left,
-            Right
+            Right,
+            BothPupil,
+            LeftPupil,
+            RightPupil
         }
 
         public enum ManacoMode

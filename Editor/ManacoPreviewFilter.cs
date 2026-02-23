@@ -112,15 +112,27 @@ namespace com.kakunvr.manaco.Editor
             {
                 foreach (var region in comp.eyeRegions)
                 {
-                    // CopyEyeFromAvatar モード: ApplyEyeSubMesh の前にマテリアルを生成
-                    if (comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
-                        ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
-
                     if (region.targetRenderer == null) continue;
+                    if (region.eyePolygonRegions == null || region.eyePolygonRegions.Length == 0) continue;
+
+                    Material eyeMat;
+                    if (comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
+                    {
+                        if (region.sourceRenderer == null) continue;
+                        // 実コンポーネントを汚染しないよう overrideMaterial として渡す
+                        eyeMat = ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
+                        if (eyeMat == null) continue;
+                    }
+                    else
+                    {
+                        if (region.customMaterial == null) continue;
+                        eyeMat = null; // ApplyEyeSubMesh が region.customMaterial を使用する
+                    }
+
                     if (!proxyMap.TryGetValue(region.targetRenderer, out var proxyRenderer)) continue;
                     if (proxyRenderer is not SkinnedMeshRenderer proxySmr) continue;
 
-                    var newMesh = pass.ApplyEyeSubMesh(region, proxySmr);
+                    var newMesh = pass.ApplyEyeSubMesh(region, proxySmr, eyeMat);
                     if (newMesh != null)
                     {
                         _createdMeshes.Add(newMesh);

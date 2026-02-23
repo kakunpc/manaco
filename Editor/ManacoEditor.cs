@@ -302,12 +302,16 @@ namespace com.kakunvr.manaco.Editor
 
             foreach (var region in comp.eyeRegions)
             {
-                if (region.eyeType == Manaco.EyeType.Left)
-                    region.customMaterial = shaderDef.leftEyeMaterial;
-                else if (region.eyeType == Manaco.EyeType.Right)
-                    region.customMaterial = shaderDef.rightEyeMaterial;
-                else if (region.eyeType == Manaco.EyeType.Both)
-                    region.customMaterial = shaderDef.bothEyeMaterial;
+                region.customMaterial = region.eyeType switch
+                {
+                    Manaco.EyeType.Left       => shaderDef.leftEyeMaterial,
+                    Manaco.EyeType.Right      => shaderDef.rightEyeMaterial,
+                    Manaco.EyeType.Both       => shaderDef.bothEyeMaterial,
+                    Manaco.EyeType.LeftPupil  => shaderDef.leftPupilMaterial,
+                    Manaco.EyeType.RightPupil => shaderDef.rightPupilMaterial,
+                    Manaco.EyeType.BothPupil  => shaderDef.bothPupilMaterial,
+                    _                         => null,
+                };
             }
 
             serializedObject.Update();
@@ -406,11 +410,16 @@ namespace com.kakunvr.manaco.Editor
 
             var smr = rendererProp.objectReferenceValue as SkinnedMeshRenderer;
             var eyeTypeEnum = (Manaco.EyeType)eyeTypeProp.enumValueIndex;
-            string eyeTypeStr = eyeTypeEnum == Manaco.EyeType.Both
-                ? ManacoLocale.T("EyeType.Both")
-                : (eyeTypeEnum == Manaco.EyeType.Left
-                    ? ManacoLocale.T("EyeType.Left")
-                    : ManacoLocale.T("EyeType.Right"));
+            string eyeTypeStr = eyeTypeEnum switch
+            {
+                Manaco.EyeType.Both       => ManacoLocale.T("EyeType.Both"),
+                Manaco.EyeType.Left       => ManacoLocale.T("EyeType.Left"),
+                Manaco.EyeType.Right      => ManacoLocale.T("EyeType.Right"),
+                Manaco.EyeType.BothPupil  => ManacoLocale.T("EyeType.BothPupil"),
+                Manaco.EyeType.LeftPupil  => ManacoLocale.T("EyeType.LeftPupil"),
+                Manaco.EyeType.RightPupil => ManacoLocale.T("EyeType.RightPupil"),
+                _                         => eyeTypeEnum.ToString(),
+            };
             string label = smr != null
                 ? $"[{index}] ({eyeTypeStr})  ({smr.name})"
                 : $"[{index}]({eyeTypeStr})";

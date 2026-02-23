@@ -38,14 +38,28 @@ namespace com.kakunvr.manaco
                 }
 
                 if (component.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
-                    ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
+                {
+                    if (region.sourceRenderer == null)
+                    {
+                        Debug.LogWarning("[Manaco] CopyEyeFromAvatar: sourceRenderer が未設定のEyeRegionがあります。スキップします。", component);
+                        continue;
+                    }
+                    // NDMF はクローン上で実行されるため region への書き込みは安全
+                    region.customMaterial = ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
+                    if (region.customMaterial == null) continue;
+                }
+                else if (region.customMaterial == null)
+                {
+                    Debug.LogWarning("[Manaco] customMaterial が未設定のEyeRegionがあります。スキップします。", component);
+                    continue;
+                }
 
                 ApplyEyeSubMesh(region, region.targetRenderer);
             }
             UnityEngine.Object.DestroyImmediate(component);
         }
 
-        public Mesh ApplyEyeSubMesh(Manaco.EyeRegion region, SkinnedMeshRenderer smr)
+        public Mesh ApplyEyeSubMesh(Manaco.EyeRegion region, SkinnedMeshRenderer smr, Material overrideMaterial = null)
         {
             var originalMesh = smr.sharedMesh;
             if (originalMesh == null)
@@ -248,8 +262,8 @@ namespace com.kakunvr.manaco
 
             mesh.RecalculateBounds();
 
-            // 新SubMeshにカスタムマテリアルを割り当て
-            var eyeMaterial = region.customMaterial;
+            // 新SubMeshにカスタムマテリアルを割り当て（override が渡された場合はそちらを優先）
+            var eyeMaterial = overrideMaterial ?? region.customMaterial;
             if (region.bakeFallbackTexture)
                 eyeMaterial = BakeFallbackTexture(eyeMaterial, region.fallbackTextureResolution);
 
