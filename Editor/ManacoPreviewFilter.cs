@@ -23,23 +23,29 @@ namespace com.kakunvr.manaco.Editor
 
                 foreach (var region in comp.eyeRegions)
                 {
-                    if (region.targetRenderer != null)
-                    {
-                        renderers.Add(region.targetRenderer);
-                        context.Observe(region.targetRenderer);
-                    }
+                    if (region.targetRenderer == null) continue;
+                    if (region.eyePolygonRegions == null || region.eyePolygonRegions.Length == 0) continue;
 
+                    bool regionReady;
                     if (comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
                     {
-                        // ソース SMR の変化を監視
+                        regionReady = region.sourceRenderer != null
+                            && region.sourceEyePolygonRegions != null
+                            && region.sourceEyePolygonRegions.Length > 0;
                         if (region.sourceRenderer != null)
                             context.Observe(region.sourceRenderer);
                     }
                     else
                     {
+                        regionReady = region.customMaterial != null;
                         if (region.customMaterial != null)
                             context.Observe(region.customMaterial);
                     }
+
+                    if (!regionReady) continue;
+
+                    renderers.Add(region.targetRenderer);
+                    context.Observe(region.targetRenderer);
                 }
             }
 
@@ -115,18 +121,19 @@ namespace com.kakunvr.manaco.Editor
                     if (region.targetRenderer == null) continue;
                     if (region.eyePolygonRegions == null || region.eyePolygonRegions.Length == 0) continue;
 
+                    // モードに応じて使用するマテリアルを決定（実コンポーネントには書き込まない）
                     Material eyeMat;
                     if (comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
                     {
                         if (region.sourceRenderer == null) continue;
-                        // 実コンポーネントを汚染しないよう overrideMaterial として渡す
+                        if (region.sourceEyePolygonRegions == null || region.sourceEyePolygonRegions.Length == 0) continue;
                         eyeMat = ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
                         if (eyeMat == null) continue;
                     }
-                    else
+                    else // EyeMaterialAssignment
                     {
                         if (region.customMaterial == null) continue;
-                        eyeMat = null; // ApplyEyeSubMesh が region.customMaterial を使用する
+                        eyeMat = region.customMaterial;
                     }
 
                     if (!proxyMap.TryGetValue(region.targetRenderer, out var proxyRenderer)) continue;

@@ -63,7 +63,7 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.Space(4);
 
             // ==== コピー先（自分のアバター）====
-            DrawSectionHeader("▼ コピー先（自分のアバター）");
+            DrawSectionHeader(ManacoLocale.T("Section.CopyDestination"));
 
             EditorGUILayout.PropertyField(eyeTypeProp,  new GUIContent(ManacoLocale.T("Label.EyeType")));
             EditorGUILayout.PropertyField(rendererProp, new GUIContent(ManacoLocale.T("Label.Renderer")));
@@ -81,22 +81,22 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.Space(6);
 
             // ==== コピー元（コピーするアバター）====
-            DrawSectionHeader("▼ コピー元（コピーするアバター）");
+            DrawSectionHeader(ManacoLocale.T("Section.CopySource"));
 
-            EditorGUILayout.PropertyField(sourceRendererProp,      new GUIContent("Renderer"));
+            EditorGUILayout.PropertyField(sourceRendererProp,      new GUIContent(ManacoLocale.T("Label.Renderer")));
             EditorGUILayout.PropertyField(sourceMaterialIndexProp, new GUIContent(ManacoLocale.T("Label.MaterialSlot")));
 
             EditorGUI.indentLevel++;
             EditorGUILayout.LabelField(
-                $"UV Island 数: {sourceEyePolygonRegionsProp.arraySize}",
+                ManacoLocale.T("Message.SourceUVIslandCount", sourceEyePolygonRegionsProp.arraySize),
                 EditorStyles.miniLabel);
             EditorGUI.indentLevel--;
 
-            if (GUILayout.Button("UV エディタを開く（コピー元）"))
+            if (GUILayout.Button(ManacoLocale.T("Button.OpenUVEditorSource")))
                 ManacoWindow.OpenForSource(comp, index);
 
             extractResolutionProp.intValue = EditorGUILayout.IntPopup(
-                "抽出解像度",
+                ManacoLocale.T("Label.ExtractResolution"),
                 extractResolutionProp.intValue,
                 new[] { "64", "128", "256", "512", "1024", "2048" },
                 new[] { 64, 128, 256, 512, 1024, 2048 });

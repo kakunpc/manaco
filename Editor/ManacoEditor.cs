@@ -85,8 +85,17 @@ namespace com.kakunvr.manaco.Editor
         {
             serializedObject.Update();
 
-            // モード選択
-            EditorGUILayout.PropertyField(_modeProp, new GUIContent("モード"));
+            // モード選択（ローカライズ済みポップアップ）
+            var modeOptions = new[]
+            {
+                ManacoLocale.T("ManacoMode.EyeMaterialAssignment"),
+                ManacoLocale.T("ManacoMode.CopyEyeFromAvatar"),
+            };
+            EditorGUI.BeginChangeCheck();
+            int newModeIdx = EditorGUILayout.Popup(
+                ManacoLocale.T("Label.Mode"), _modeProp.enumValueIndex, modeOptions);
+            if (EditorGUI.EndChangeCheck())
+                _modeProp.enumValueIndex = newModeIdx;
             var currentMode = (Manaco.ManacoMode)_modeProp.enumValueIndex;
 
             EditorGUILayout.Space(8);
@@ -189,7 +198,7 @@ namespace com.kakunvr.manaco.Editor
         private void DrawCopyEyeFromAvatarTop()
         {
             // アバタープリセット（コピー先）
-            EditorGUILayout.LabelField("アバタープリセット（コピー先）", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(ManacoLocale.T("Label.DestinationPreset"), EditorStyles.boldLabel);
             EditorGUILayout.BeginHorizontal();
             int newIndex = EditorGUILayout.Popup(ManacoLocale.T("Popup.ApplyPreset"),
                 _selectedPresetIndex, _presetNames);
@@ -205,8 +214,8 @@ namespace com.kakunvr.manaco.Editor
 
             EditorGUILayout.Space(8);
 
-            // コピー元のアバターprefab
-            EditorGUILayout.LabelField("コピー元のアバターprefab", EditorStyles.boldLabel);
+            // コピー元のアバター
+            EditorGUILayout.LabelField(ManacoLocale.T("Label.SourceAvatar"), EditorStyles.boldLabel);
             EditorGUI.BeginChangeCheck();
             EditorGUILayout.PropertyField(_sourceAvatarPrefabProp, new GUIContent("Avatar"));
             if (EditorGUI.EndChangeCheck())
@@ -221,7 +230,7 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.Space(8);
 
             // コピー元のアバタープリセット
-            EditorGUILayout.LabelField("コピー元のアバタープリセット", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(ManacoLocale.T("Label.SourcePreset"), EditorStyles.boldLabel);
             EditorGUILayout.BeginHorizontal();
             int newSourceIndex = EditorGUILayout.Popup(ManacoLocale.T("Popup.ApplyPreset"),
                 _selectedSourcePresetIndex, _presetNames);
