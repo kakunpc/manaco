@@ -13,19 +13,30 @@ namespace com.kakunvr.manaco.Editor
         public ImmutableList<RenderGroup> GetTargetGroups(ComputeContext context)
         {
             var renderers = new HashSet<Renderer>();
-            var comps = context.GetAvatarRoots().SelectMany(root => context.GetComponentsInChildren<Manaco>(root, true));
+            var comps = context.GetAvatarRoots()
+                .SelectMany(root => context.GetComponentsInChildren<Manaco>(root, true));
+
             foreach (var comp in comps)
             {
                 context.Observe(comp);
-                if (comp.useNdmfPreview)
+                if (!comp.useNdmfPreview) continue;
+
+                foreach (var region in comp.eyeRegions)
                 {
-                    foreach (var region in comp.eyeRegions)
+                    if (region.targetRenderer != null)
                     {
-                        if (region.targetRenderer != null)
-                        {
-                            renderers.Add(region.targetRenderer);
-                            context.Observe(region.targetRenderer);
-                        }
+                        renderers.Add(region.targetRenderer);
+                        context.Observe(region.targetRenderer);
+                    }
+
+                    if (comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
+                    {
+                        // ソース SMR の変化を監視
+                        if (region.sourceRenderer != null)
+                            context.Observe(region.sourceRenderer);
+                    }
+                    else
+                    {
                         if (region.customMaterial != null)
                             context.Observe(region.customMaterial);
                     }
@@ -38,31 +49,41 @@ namespace com.kakunvr.manaco.Editor
 
         public bool IsEnabled(ComputeContext context)
         {
-            var comps = context.GetAvatarRoots().SelectMany(root => context.GetComponentsInChildren<Manaco>(root, true));
+            var comps = context.GetAvatarRoots()
+                .SelectMany(root => context.GetComponentsInChildren<Manaco>(root, true));
             foreach (var comp in comps)
             {
                 context.Observe(comp);
-                if (comp.useNdmfPreview)
-                {
-                    return true;
-                }
+                if (comp.useNdmfPreview) return true;
             }
             return false;
         }
 
-        public Task<IRenderFilterNode> Instantiate(RenderGroup group, IEnumerable<(Renderer, Renderer)> proxyPairs, ComputeContext context)
+        public Task<IRenderFilterNode> Instantiate(
+            RenderGroup group,
+            IEnumerable<(Renderer, Renderer)> proxyPairs,
+            ComputeContext context)
         {
             var comps = context.GetAvatarRoots()
                 .SelectMany(root => context.GetComponentsInChildren<Manaco>(root, true))
-                .Where(c => c.useNdmfPreview).ToList();
+                .Where(c => c.useNdmfPreview)
+                .ToList();
 
             foreach (var comp in comps)
             {
                 context.Observe(comp);
                 foreach (var region in comp.eyeRegions)
                 {
-                    if (region.customMaterial != null)
-                        context.Observe(region.customMaterial);
+                    if (comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
+                    {
+                        if (region.sourceRenderer != null)
+                            context.Observe(region.sourceRenderer);
+                    }
+                    else
+                    {
+                        if (region.customMaterial != null)
+                            context.Observe(region.customMaterial);
+                    }
                 }
             }
 
@@ -76,10 +97,14 @@ namespace com.kakunvr.manaco.Editor
     {
         public RenderAspects WhatChanged => RenderAspects.Mesh | RenderAspects.Material;
 
-        private List<Mesh> _createdMeshes = new List<Mesh>();
-        private Dictionary<Renderer, (Mesh, Material[])> _rendererModifications = new Dictionary<Renderer, (Mesh, Material[])>();
+        private readonly List<Mesh> _createdMeshes = new List<Mesh>();
+        private readonly Dictionary<Renderer, (Mesh mesh, Material[] materials)> _rendererModifications
+            = new Dictionary<Renderer, (Mesh, Material[])>();
 
-        public ManacoPreviewNode(List<Manaco> comps, IEnumerable<(Renderer, Renderer)> proxyPairs, ManacoPass pass)
+        public ManacoPreviewNode(
+            List<Manaco> comps,
+            IEnumerable<(Renderer, Renderer)> proxyPairs,
+            ManacoPass pass)
         {
             var proxyMap = proxyPairs.ToDictionary(p => p.Item1, p => p.Item2);
 
@@ -87,17 +112,20 @@ namespace com.kakunvr.manaco.Editor
             {
                 foreach (var region in comp.eyeRegions)
                 {
-                    if (region.targetRenderer != null && proxyMap.TryGetValue(region.targetRenderer, out var proxyRenderer))
+                    // CopyEyeFromAvatar モード: ApplyEyeSubMesh の前にマテリアルを生成
+                    if (comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
+                        ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
+
+                    if (region.targetRenderer == null) continue;
+                    if (!proxyMap.TryGetValue(region.targetRenderer, out var proxyRenderer)) continue;
+                    if (proxyRenderer is not SkinnedMeshRenderer proxySmr) continue;
+
+                    var newMesh = pass.ApplyEyeSubMesh(region, proxySmr);
+                    if (newMesh != null)
                     {
-                        if (proxyRenderer is SkinnedMeshRenderer proxySmr)
-                        {
-                            var newMesh = pass.ApplyEyeSubMesh(region, proxySmr);
-                            if (newMesh != null)
-                            {
-                                _createdMeshes.Add(newMesh);
-                                _rendererModifications[region.targetRenderer] = (proxySmr.sharedMesh, proxySmr.sharedMaterials);
-                            }
-                        }
+                        _createdMeshes.Add(newMesh);
+                        _rendererModifications[region.targetRenderer] =
+                            (proxySmr.sharedMesh, proxySmr.sharedMaterials);
                     }
                 }
             }
@@ -105,25 +133,19 @@ namespace com.kakunvr.manaco.Editor
 
         public void OnFrame(Renderer original, Renderer proxy)
         {
-            if (_rendererModifications.TryGetValue(original, out var mods))
+            if (!_rendererModifications.TryGetValue(original, out var mods)) return;
+            if (proxy is SkinnedMeshRenderer proxySmr)
             {
-                if (proxy is SkinnedMeshRenderer proxySmr)
-                {
-                    proxySmr.sharedMesh = mods.Item1;
-                    proxySmr.sharedMaterials = mods.Item2;
-                }
+                proxySmr.sharedMesh      = mods.mesh;
+                proxySmr.sharedMaterials = mods.materials;
             }
         }
 
         public void Dispose()
         {
             foreach (var mesh in _createdMeshes)
-            {
                 if (mesh != null)
-                {
                     Object.DestroyImmediate(mesh);
-                }
-            }
             _createdMeshes.Clear();
             _rendererModifications.Clear();
         }

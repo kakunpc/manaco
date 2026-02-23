@@ -15,6 +15,9 @@ namespace com.kakunvr.manaco.Editor
         private SerializedObject _so;
         private int _regionIndex;
 
+        // ---- ソースモードフラグ ----
+        private bool _isSourceMode;
+
         // ---- プレビューキャッシュ ----
         private Texture2D _previewTexture;
         private Vector2[] _cachedUVs;
@@ -33,7 +36,20 @@ namespace com.kakunvr.manaco.Editor
         public static void OpenWith(Manaco target, int regionIndex)
         {
             var w = GetWindow<ManacoWindow>(ManacoLocale.T("Window.UVEditor"));
+            w._isSourceMode = false;
             w.SetRegion(target, regionIndex);
+            w.Show();
+        }
+
+        /// <summary>
+        /// CopyEyeFromAvatar モードのソース UV Island 編集用に開く。
+        /// sourceEyePolygonRegions を読み書きする。
+        /// </summary>
+        public static void OpenForSource(Manaco target, int regionIndex)
+        {
+            var w = GetWindow<ManacoWindow>(ManacoLocale.T("Window.UVEditor") + " [ソース]");
+            w._isSourceMode = true;
+            w.SetRegionForSource(target, regionIndex);
             w.Show();
         }
 
@@ -52,6 +68,17 @@ namespace com.kakunvr.manaco.Editor
                 titleContent = new GUIContent($"Eye UV [{regionIndex}]");
         }
 
+        private void SetRegionForSource(Manaco target, int regionIndex)
+        {
+            _target = target;
+            _regionIndex = regionIndex;
+            _so = target != null ? new SerializedObject(target) : null;
+            RefreshPreviewCache();
+
+            if (target != null && regionIndex < target.eyeRegions.Count)
+                titleContent = new GUIContent($"Source UV [{regionIndex}]");
+        }
+
         // ============================================================
         //  プレビューキャッシュの更新
         // ============================================================
@@ -67,18 +94,31 @@ namespace com.kakunvr.manaco.Editor
             if (_regionIndex >= _target.eyeRegions.Count) return;
 
             var region = _target.eyeRegions[_regionIndex];
-            if (region?.targetRenderer == null) return;
 
-            var smr = region.targetRenderer;
+            SkinnedMeshRenderer smr;
+            int matIdx;
+
+            if (_isSourceMode)
+            {
+                if (region.sourceRenderer == null) return;
+                smr = region.sourceRenderer;
+                matIdx = Mathf.Clamp(region.sourceMaterialIndex, 0, smr.sharedMaterials.Length - 1);
+            }
+            else
+            {
+                if (region.targetRenderer == null) return;
+                smr = region.targetRenderer;
+                matIdx = Mathf.Clamp(region.materialIndex, 0, smr.sharedMaterials.Length - 1);
+            }
+
             var mesh = smr.sharedMesh;
             if (mesh == null) return;
 
-            int matIdx = Mathf.Clamp(region.materialIndex, 0, smr.sharedMaterials.Length - 1);
             if (smr.sharedMaterials.Length > 0 && smr.sharedMaterials[matIdx] != null)
                 _previewTexture = smr.sharedMaterials[matIdx].mainTexture as Texture2D;
 
             _cachedUVs = mesh.uv;
-            int subIdx = Mathf.Clamp(region.materialIndex, 0, mesh.subMeshCount - 1);
+            int subIdx = matIdx < mesh.subMeshCount ? matIdx : 0;
             var rawTris = mesh.GetTriangles(subIdx);
             var triList = new List<int[]>(rawTris.Length / 3);
             for (int i = 0; i < rawTris.Length; i += 3)
@@ -95,9 +135,10 @@ namespace com.kakunvr.manaco.Editor
             if (_regionIndex >= _target.eyeRegions.Count) return;
 
             var region = _target.eyeRegions[_regionIndex];
-            if (region.eyePolygonRegions == null) return;
+            var polygonRegions = _isSourceMode ? region.sourceEyePolygonRegions : region.eyePolygonRegions;
+            if (polygonRegions == null) return;
 
-            foreach (var polygonRegion in region.eyePolygonRegions)
+            foreach (var polygonRegion in polygonRegions)
             {
                 if (polygonRegion.uvPoints == null || polygonRegion.uvPoints.Length == 0) continue;
 
@@ -161,11 +202,26 @@ namespace com.kakunvr.manaco.Editor
             _leftPanelScroll = EditorGUILayout.BeginScrollView(_leftPanelScroll);
             EditorGUILayout.Space(4);
 
-            var regionsProp  = _so.FindProperty("eyeRegions");
-            var elem         = regionsProp.GetArrayElementAtIndex(_regionIndex);
-            var rendererProp = elem.FindPropertyRelative("targetRenderer");
-            var matIndexProp = elem.FindPropertyRelative("materialIndex");
-            var uvRegionsProp = elem.FindPropertyRelative("eyePolygonRegions");
+            var regionsProp = _so.FindProperty("eyeRegions");
+            var elem        = regionsProp.GetArrayElementAtIndex(_regionIndex);
+
+            SerializedProperty rendererProp;
+            SerializedProperty matIndexProp;
+            SerializedProperty uvRegionsProp;
+
+            if (_isSourceMode)
+            {
+                rendererProp  = elem.FindPropertyRelative("sourceRenderer");
+                matIndexProp  = elem.FindPropertyRelative("sourceMaterialIndex");
+                uvRegionsProp = elem.FindPropertyRelative("sourceEyePolygonRegions");
+                EditorGUILayout.HelpBox("ソース UV 編集モード", MessageType.Info);
+            }
+            else
+            {
+                rendererProp  = elem.FindPropertyRelative("targetRenderer");
+                matIndexProp  = elem.FindPropertyRelative("materialIndex");
+                uvRegionsProp = elem.FindPropertyRelative("eyePolygonRegions");
+            }
 
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
@@ -309,17 +365,18 @@ namespace com.kakunvr.manaco.Editor
         {
             if (_target == null || _regionIndex >= _target.eyeRegions.Count) return;
             var region = _target.eyeRegions[_regionIndex];
-            if (region.eyePolygonRegions == null) return;
+            var polygonRegions = _isSourceMode ? region.sourceEyePolygonRegions : region.eyePolygonRegions;
+            if (polygonRegions == null) return;
 
-            for (int i = 0; i < region.eyePolygonRegions.Length; i++)
+            for (int i = 0; i < polygonRegions.Length; i++)
             {
                 float hue = (i * 0.618f) % 1f;
                 var col = Color.HSVToRGB(hue, 0.8f, 1f);
 
-                if (region.eyePolygonRegions[i].uvPoints == null ||
-                    region.eyePolygonRegions[i].uvPoints.Length == 0) continue;
+                if (polygonRegions[i].uvPoints == null ||
+                    polygonRegions[i].uvPoints.Length == 0) continue;
 
-                Rect uvRect = CalcUVBounds(region.eyePolygonRegions[i].uvPoints);
+                Rect uvRect = CalcUVBounds(polygonRegions[i].uvPoints);
                 DrawRectOverlay(previewRect, uvRect,
                     new Color(col.r, col.g, col.b, 0.25f),
                     new Color(col.r, col.g, col.b, 1f),
@@ -364,6 +421,8 @@ namespace com.kakunvr.manaco.Editor
             if (_cachedUVs == null || _cachedTriangles == null) return;
             if (_target == null || _regionIndex >= _target.eyeRegions.Count) return;
 
+            string uvRegionsPropName = _isSourceMode ? "sourceEyePolygonRegions" : "eyePolygonRegions";
+
             var clickedUV = ScreenToUV(previewRect, e.mousePosition);
 
             if (e.button == 0)
@@ -385,7 +444,8 @@ namespace com.kakunvr.manaco.Editor
                 }
 
                 var region = _target.eyeRegions[_regionIndex];
-                foreach (var existing in region.eyePolygonRegions)
+                var existingRegions = _isSourceMode ? region.sourceEyePolygonRegions : region.eyePolygonRegions;
+                foreach (var existing in existingRegions)
                 {
                     if (existing.uvPoints != null && existing.uvPoints.Length == uvPointsList.Count)
                     {
@@ -399,7 +459,7 @@ namespace com.kakunvr.manaco.Editor
                 Undo.RecordObject(_target, "Add Eye UV Island");
                 var uvRegionsProp = _so.FindProperty("eyeRegions")
                     .GetArrayElementAtIndex(_regionIndex)
-                    .FindPropertyRelative("eyePolygonRegions");
+                    .FindPropertyRelative(uvRegionsPropName);
                 uvRegionsProp.arraySize++;
                 var newElemProp = uvRegionsProp.GetArrayElementAtIndex(uvRegionsProp.arraySize - 1);
                 var indicesProp = newElemProp.FindPropertyRelative("uvPoints");
@@ -427,12 +487,13 @@ namespace com.kakunvr.manaco.Editor
                 if (nearestIdx >= 0)
                 {
                     long q0 = QuantizeUV(_cachedUVs[_cachedTriangles[nearestIdx][0]]);
+                    var existingRegions = _isSourceMode ? region.sourceEyePolygonRegions : region.eyePolygonRegions;
                     int removeIdx = -1;
-                    for (int i = 0; i < region.eyePolygonRegions.Length; i++)
+                    for (int i = 0; i < existingRegions.Length; i++)
                     {
-                        if (region.eyePolygonRegions[i].uvPoints == null) continue;
+                        if (existingRegions[i].uvPoints == null) continue;
                         bool contains = false;
-                        foreach (var pt in region.eyePolygonRegions[i].uvPoints)
+                        foreach (var pt in existingRegions[i].uvPoints)
                         {
                             if (QuantizeUV(pt) == q0) { contains = true; break; }
                         }
@@ -444,7 +505,7 @@ namespace com.kakunvr.manaco.Editor
                         Undo.RecordObject(_target, "Remove Eye UV Island");
                         var uvRegionsProp = _so.FindProperty("eyeRegions")
                             .GetArrayElementAtIndex(_regionIndex)
-                            .FindPropertyRelative("eyePolygonRegions");
+                            .FindPropertyRelative(uvRegionsPropName);
                         uvRegionsProp.DeleteArrayElementAtIndex(removeIdx);
                         _so.ApplyModifiedProperties();
                         RefreshSelectionFromRects();

@@ -20,6 +20,12 @@ namespace com.kakunvr.manaco
             Right
         }
 
+        public enum ManacoMode
+        {
+            EyeMaterialAssignment,  // 既存: カスタムマテリアル割り当て
+            CopyEyeFromAvatar       // 新規: 別アバターの目をコピー
+        }
+
         [Serializable]
         public class UVPolygonRegion
         {
@@ -49,7 +55,26 @@ namespace com.kakunvr.manaco
 
             [Tooltip("フォールバックテクスチャの解像度（64〜2048）")]
             public int fallbackTextureResolution = 128;
+
+            // CopyEyeFromAvatar モード用フィールド
+            [Tooltip("コピー元のSkinnedMeshRenderer")]
+            public SkinnedMeshRenderer sourceRenderer;
+
+            [Tooltip("コピー元のマテリアルスロット")]
+            public int sourceMaterialIndex;
+
+            [Tooltip("コピー元の目のポリゴンを特定するためのUV Island")]
+            public UVPolygonRegion[] sourceEyePolygonRegions = Array.Empty<UVPolygonRegion>();
+
+            [Tooltip("抽出テクスチャの解像度（64〜2048）")]
+            public int extractTextureResolution = 512;
+
+            [HideInInspector] public ManacoPreset sourcePreset;
+            [HideInInspector] public int sourcePresetRegionIndex;
         }
+
+        [Tooltip("動作モード")]
+        public ManacoMode mode = ManacoMode.EyeMaterialAssignment;
 
         [Tooltip("設定する目の領域リスト。SMRごとに追加してください。")]
         public List<EyeRegion> eyeRegions = new List<EyeRegion>();
@@ -62,5 +87,12 @@ namespace com.kakunvr.manaco
 
         [HideInInspector]
         public ManacoMaterialDefinition appliedShaderDef;
+
+        // CopyEyeFromAvatar モード - コンポーネントレベル設定
+        [Tooltip("コピー元のアバターのルートGameObject（Prefab可）")]
+        public GameObject sourceAvatarPrefab;
+
+        [HideInInspector]
+        public ManacoPreset appliedSourceAvatarPreset;
     }
 }

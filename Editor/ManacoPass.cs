@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using com.kakunvr.manaco.Editor;
 using nadena.dev.ndmf;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -35,6 +36,10 @@ namespace com.kakunvr.manaco
                     Debug.LogWarning("[Manaco] eyePolygonRegions が空のEyeRegionがあります。スキップします。", component);
                     continue;
                 }
+
+                if (component.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
+                    ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
+
                 ApplyEyeSubMesh(region, region.targetRenderer);
             }
             UnityEngine.Object.DestroyImmediate(component);
@@ -308,7 +313,7 @@ namespace com.kakunvr.manaco
             return clonedMaterial;
         }
 
-        private static long QuantizeUV(Vector2 uv)
+        internal static long QuantizeUV(Vector2 uv)
         {
             int xi = Mathf.RoundToInt(uv.x * 10000);
             int yi = Mathf.RoundToInt(uv.y * 10000);

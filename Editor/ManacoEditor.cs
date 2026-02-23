@@ -8,18 +8,24 @@ namespace com.kakunvr.manaco.Editor
     {
         private SerializedProperty _eyeRegionsProp;
         private SerializedProperty _useNdmfPreviewProp;
+        private SerializedProperty _modeProp;
+        private SerializedProperty _sourceAvatarPrefabProp;
 
         private void OnEnable()
         {
-            _eyeRegionsProp = serializedObject.FindProperty("eyeRegions");
-            _useNdmfPreviewProp = serializedObject.FindProperty("useNdmfPreview");
+            _eyeRegionsProp        = serializedObject.FindProperty("eyeRegions");
+            _useNdmfPreviewProp    = serializedObject.FindProperty("useNdmfPreview");
+            _modeProp              = serializedObject.FindProperty("mode");
+            _sourceAvatarPrefabProp = serializedObject.FindProperty("sourceAvatarPrefab");
             LoadPresets();
             LoadShaders();
         }
 
+        // ---- プリセット（コピー先 / コピー元で同じリストを共用） ----
         private ManacoPreset[] _availablePresets;
         private string[] _presetNames;
-        private int _selectedPresetIndex = 0;
+        private int _selectedPresetIndex       = 0;
+        private int _selectedSourcePresetIndex = 0;
 
         private void LoadPresets()
         {
@@ -29,7 +35,8 @@ namespace com.kakunvr.manaco.Editor
             _presetNames[0] = ManacoLocale.T("Prompt.SelectPreset");
 
             var comp = target as Manaco;
-            _selectedPresetIndex = 0;
+            _selectedPresetIndex       = 0;
+            _selectedSourcePresetIndex = 0;
 
             for (int i = 0; i < guids.Length; i++)
             {
@@ -39,9 +46,12 @@ namespace com.kakunvr.manaco.Editor
 
                 if (comp != null && comp.appliedAvatarPreset == _availablePresets[i])
                     _selectedPresetIndex = i + 1;
+                if (comp != null && comp.appliedSourceAvatarPreset == _availablePresets[i])
+                    _selectedSourcePresetIndex = i + 1;
             }
         }
 
+        // ---- シェーダー定義 ----
         private ManacoMaterialDefinition[] _availableShaders;
         private string[] _shaderNames;
         private int _selectedShaderIndex = 0;
@@ -67,39 +77,24 @@ namespace com.kakunvr.manaco.Editor
             }
         }
 
-        private ManacoPreset _selectedPreset;
+        // ================================================================
+        //  OnInspectorGUI
+        // ================================================================
 
         public override void OnInspectorGUI()
         {
             serializedObject.Update();
-            EditorGUILayout.LabelField(ManacoLocale.T("Label.AvatarPreset"), EditorStyles.boldLabel);
 
-            EditorGUILayout.BeginHorizontal();
-            int newIndex = EditorGUILayout.Popup(ManacoLocale.T("Popup.ApplyPreset"), _selectedPresetIndex, _presetNames);
-            if (newIndex != _selectedPresetIndex)
-            {
-                _selectedPresetIndex = newIndex;
-                if (_selectedPresetIndex > 0)
-                    ApplyPreset((Manaco)target, _availablePresets[_selectedPresetIndex - 1]);
-            }
-            if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50)))
-                LoadPresets();
-            EditorGUILayout.EndHorizontal();
+            // モード選択
+            EditorGUILayout.PropertyField(_modeProp, new GUIContent("モード"));
+            var currentMode = (Manaco.ManacoMode)_modeProp.enumValueIndex;
 
             EditorGUILayout.Space(8);
-            EditorGUILayout.LabelField(ManacoLocale.T("Label.CustomMaterial"), EditorStyles.boldLabel);
 
-            EditorGUILayout.BeginHorizontal();
-            int newShaderIndex = EditorGUILayout.Popup(ManacoLocale.T("Popup.ApplyMaterial"), _selectedShaderIndex, _shaderNames);
-            if (newShaderIndex != _selectedShaderIndex)
-            {
-                _selectedShaderIndex = newShaderIndex;
-                if (_selectedShaderIndex > 0)
-                    ApplyShader((Manaco)target, _availableShaders[_selectedShaderIndex - 1]);
-            }
-            if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50)))
-                LoadShaders();
-            EditorGUILayout.EndHorizontal();
+            if (currentMode == Manaco.ManacoMode.EyeMaterialAssignment)
+                DrawEyeMaterialAssignmentTop();
+            else
+                DrawCopyEyeFromAvatarTop();
 
             EditorGUILayout.Space(8);
 
@@ -116,8 +111,14 @@ namespace com.kakunvr.manaco.Editor
 
                 for (int i = 0; i < _eyeRegionsProp.arraySize; i++)
                 {
-                    if (DrawEyeRegionSummary(comp, _eyeRegionsProp.GetArrayElementAtIndex(i), i))
-                        break;
+                    bool deleted;
+                    if (currentMode == Manaco.ManacoMode.CopyEyeFromAvatar)
+                        deleted = ManacoEyeCopyDrawer.DrawCopyEyeRegionSummary(
+                            comp, _eyeRegionsProp, _eyeRegionsProp.GetArrayElementAtIndex(i), i);
+                    else
+                        deleted = DrawEyeRegionSummary(comp, _eyeRegionsProp.GetArrayElementAtIndex(i), i);
+
+                    if (deleted) break;
                 }
 
                 EditorGUILayout.Space(4);
@@ -127,8 +128,11 @@ namespace com.kakunvr.manaco.Editor
 
             serializedObject.ApplyModifiedProperties();
 
+            // 言語セレクター
             EditorGUILayout.Space(8);
-            EditorGUI.DrawRect(GUILayoutUtility.GetRect(0, 1, GUILayout.ExpandWidth(true)), new Color(0.3f, 0.3f, 0.3f));
+            EditorGUI.DrawRect(
+                GUILayoutUtility.GetRect(0, 1, GUILayout.ExpandWidth(true)),
+                new Color(0.3f, 0.3f, 0.3f));
             EditorGUILayout.Space(4);
 
             var (codes, names) = ManacoLocale.GetAvailableLanguages();
@@ -139,6 +143,102 @@ namespace com.kakunvr.manaco.Editor
             if (EditorGUI.EndChangeCheck() && newLangIdx >= 0 && newLangIdx < codes.Length)
                 ManacoLocale.SetLanguage(codes[newLangIdx]);
         }
+
+        // ----------------------------------------------------------------
+        //  EyeMaterialAssignment モードのトップセクション
+        // ----------------------------------------------------------------
+
+        private void DrawEyeMaterialAssignmentTop()
+        {
+            EditorGUILayout.LabelField(ManacoLocale.T("Label.AvatarPreset"), EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginHorizontal();
+            int newIndex = EditorGUILayout.Popup(ManacoLocale.T("Popup.ApplyPreset"),
+                _selectedPresetIndex, _presetNames);
+            if (newIndex != _selectedPresetIndex)
+            {
+                _selectedPresetIndex = newIndex;
+                if (_selectedPresetIndex > 0)
+                    ApplyPreset((Manaco)target, _availablePresets[_selectedPresetIndex - 1]);
+            }
+            if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50)))
+                LoadPresets();
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.Space(8);
+            EditorGUILayout.LabelField(ManacoLocale.T("Label.CustomMaterial"), EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginHorizontal();
+            int newShaderIndex = EditorGUILayout.Popup(ManacoLocale.T("Popup.ApplyMaterial"),
+                _selectedShaderIndex, _shaderNames);
+            if (newShaderIndex != _selectedShaderIndex)
+            {
+                _selectedShaderIndex = newShaderIndex;
+                if (_selectedShaderIndex > 0)
+                    ApplyShader((Manaco)target, _availableShaders[_selectedShaderIndex - 1]);
+            }
+            if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50)))
+                LoadShaders();
+            EditorGUILayout.EndHorizontal();
+        }
+
+        // ----------------------------------------------------------------
+        //  CopyEyeFromAvatar モードのトップセクション
+        // ----------------------------------------------------------------
+
+        private void DrawCopyEyeFromAvatarTop()
+        {
+            // アバタープリセット（コピー先）
+            EditorGUILayout.LabelField("アバタープリセット（コピー先）", EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal();
+            int newIndex = EditorGUILayout.Popup(ManacoLocale.T("Popup.ApplyPreset"),
+                _selectedPresetIndex, _presetNames);
+            if (newIndex != _selectedPresetIndex)
+            {
+                _selectedPresetIndex = newIndex;
+                if (_selectedPresetIndex > 0)
+                    ApplyPreset((Manaco)target, _availablePresets[_selectedPresetIndex - 1]);
+            }
+            if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50)))
+                LoadPresets();
+            EditorGUILayout.EndHorizontal();
+
+            EditorGUILayout.Space(8);
+
+            // コピー元のアバターprefab
+            EditorGUILayout.LabelField("コピー元のアバターprefab", EditorStyles.boldLabel);
+            EditorGUI.BeginChangeCheck();
+            EditorGUILayout.PropertyField(_sourceAvatarPrefabProp, new GUIContent("Avatar"));
+            if (EditorGUI.EndChangeCheck())
+            {
+                serializedObject.ApplyModifiedProperties();
+                var comp = (Manaco)target;
+                if (comp.appliedSourceAvatarPreset != null && comp.sourceAvatarPrefab != null)
+                    RefreshSourceRenderers(comp);
+                serializedObject.Update();
+            }
+
+            EditorGUILayout.Space(8);
+
+            // コピー元のアバタープリセット
+            EditorGUILayout.LabelField("コピー元のアバタープリセット", EditorStyles.boldLabel);
+            EditorGUILayout.BeginHorizontal();
+            int newSourceIndex = EditorGUILayout.Popup(ManacoLocale.T("Popup.ApplyPreset"),
+                _selectedSourcePresetIndex, _presetNames);
+            if (newSourceIndex != _selectedSourcePresetIndex)
+            {
+                _selectedSourcePresetIndex = newSourceIndex;
+                if (_selectedSourcePresetIndex > 0)
+                    ApplySourcePreset((Manaco)target, _availablePresets[_selectedSourcePresetIndex - 1]);
+            }
+            if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50)))
+                LoadPresets();
+            EditorGUILayout.EndHorizontal();
+        }
+
+        // ================================================================
+        //  プリセット適用
+        // ================================================================
 
         private void ApplyPreset(Manaco comp, ManacoPreset preset)
         {
@@ -163,7 +263,7 @@ namespace com.kakunvr.manaco.Editor
             {
                 var region = new Manaco.EyeRegion
                 {
-                    eyeType = pr.eyeType,
+                    eyeType      = pr.eyeType,
                     materialIndex = pr.materialIndex,
                     eyePolygonRegions = new Manaco.UVPolygonRegion[pr.eyePolygonRegions.Length]
                 };
@@ -213,6 +313,86 @@ namespace com.kakunvr.manaco.Editor
             serializedObject.Update();
             EditorUtility.SetDirty(comp);
         }
+
+        /// <summary>
+        /// ソースプリセットを適用する。
+        /// 各 EyeRegion にソース UV Island とマテリアルスロットをコピーし、
+        /// sourceAvatarPrefab が設定済みなら sourceRenderer も設定する。
+        /// </summary>
+        private void ApplySourcePreset(Manaco comp, ManacoPreset sourcePreset)
+        {
+            Undo.RecordObject(comp, "Apply Source Preset");
+
+            comp.appliedSourceAvatarPreset = sourcePreset;
+
+            int count = Mathf.Min(comp.eyeRegions.Count, sourcePreset.regions.Count);
+            for (int i = 0; i < count; i++)
+            {
+                var region     = comp.eyeRegions[i];
+                var presetRegion = sourcePreset.regions[i];
+
+                region.sourceMaterialIndex = presetRegion.materialIndex;
+                region.sourceEyePolygonRegions =
+                    new Manaco.UVPolygonRegion[presetRegion.eyePolygonRegions.Length];
+                for (int j = 0; j < presetRegion.eyePolygonRegions.Length; j++)
+                {
+                    region.sourceEyePolygonRegions[j] = new Manaco.UVPolygonRegion
+                    {
+                        uvPoints = presetRegion.eyePolygonRegions[j].uvPoints.Clone() as Vector2[]
+                    };
+                }
+
+                if (comp.sourceAvatarPrefab != null)
+                {
+                    var renderers = comp.sourceAvatarPrefab
+                        .GetComponentsInChildren<SkinnedMeshRenderer>(true);
+                    foreach (var smr in renderers)
+                    {
+                        if (smr.name == presetRegion.targetRendererName)
+                        {
+                            region.sourceRenderer = smr;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            serializedObject.Update();
+            EditorUtility.SetDirty(comp);
+        }
+
+        /// <summary>
+        /// sourceAvatarPrefab が変わった時に sourceRenderer を再設定する。
+        /// </summary>
+        private void RefreshSourceRenderers(Manaco comp)
+        {
+            var preset = comp.appliedSourceAvatarPreset;
+            if (preset == null || comp.sourceAvatarPrefab == null) return;
+
+            var renderers = comp.sourceAvatarPrefab
+                .GetComponentsInChildren<SkinnedMeshRenderer>(true);
+
+            int count = Mathf.Min(comp.eyeRegions.Count, preset.regions.Count);
+            for (int i = 0; i < count; i++)
+            {
+                var region     = comp.eyeRegions[i];
+                var presetRegion = preset.regions[i];
+                foreach (var smr in renderers)
+                {
+                    if (smr.name == presetRegion.targetRendererName)
+                    {
+                        region.sourceRenderer = smr;
+                        break;
+                    }
+                }
+            }
+
+            EditorUtility.SetDirty(comp);
+        }
+
+        // ================================================================
+        //  EyeMaterialAssignment モード用の EyeRegion 描画
+        // ================================================================
 
         private bool DrawEyeRegionSummary(Manaco comp, SerializedProperty element, int index)
         {
