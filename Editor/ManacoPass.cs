@@ -124,7 +124,7 @@ namespace com.kakunvr.manaco
                 return null;
             }
 
-            // ---- 目の頂点UV境界を計算 ----
+            // ---- 目の頂点UV境界を計算（楕円→円形リマッピング用） ----
             var eyeVertSet = new HashSet<int>(eyeTriangles);
             float minU = float.MaxValue, minV = float.MaxValue;
             float maxU = float.MinValue, maxV = float.MinValue;
@@ -135,8 +135,10 @@ namespace com.kakunvr.manaco
                 if (uvs[vi].x > maxU) maxU = uvs[vi].x;
                 if (uvs[vi].y > maxV) maxV = uvs[vi].y;
             }
-            float rangeU = Mathf.Max(maxU - minU, 1e-5f);
-            float rangeV = Mathf.Max(maxV - minV, 1e-5f);
+            float centerU = (minU + maxU) * 0.5f;
+            float centerV = (minV + maxV) * 0.5f;
+            float rangeU  = Mathf.Max(maxU - minU, 1e-5f);
+            float rangeV  = Mathf.Max(maxV - minV, 1e-5f);
 
             // ---- ブレンドシェイプを頂点数変更前に保存 ----
             int origVertCount = mesh.vertexCount;
@@ -186,10 +188,10 @@ namespace com.kakunvr.manaco
                 if (uv3.Count      > vi) uv3.Add(uv3[vi]);
                 if (uv4.Count      > vi) uv4.Add(uv4[vi]);
 
-                // UV を境界BOX基準で [0, 1] に正規化
+                // U・V を独立スケールして [0, 1] に正規化（楕円→円形マッピング）
                 uvList.Add(new Vector2(
-                    (uvs[vi].x - minU) / rangeU,
-                    (uvs[vi].y - minV) / rangeV));
+                    0.5f + (uvs[vi].x - centerU) / rangeU,
+                    0.5f + (uvs[vi].y - centerV) / rangeV));
             }
 
             // 目トライアングルのインデックスを複製頂点に差し替え
