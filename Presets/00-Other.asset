@@ -22,3 +22,11 @@ MonoBehaviour:
     targetRendererName: Body
     materialIndex: 0
     eyePolygonRegions: []
+  - eyeType: 4
+    targetRendererName: Body
+    materialIndex: 0
+    eyePolygonRegions: []
+  - eyeType: 5
+    targetRendererName: Body
+    materialIndex: 0
+    eyePolygonRegions: []

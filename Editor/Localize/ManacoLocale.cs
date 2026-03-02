@@ -47,6 +47,7 @@ namespace com.kakunvr.manaco.Editor
             ["Button.Delete"]             = "削除",
             ["Button.Add"]                = "+ 追加",
             ["Button.Apply"]              = "Apply",
+            ["Button.Select"]             = "選ぶ",
             ["Button.OpenUVEditor"]       = "UV エディタを開く",
             ["Toggle.NdmfPreview"]        = "NDMF Preview を有効にする",
             ["Toggle.FallbackTexture"]    = "フォールバックテクスチャを自動生成",
@@ -57,6 +58,8 @@ namespace com.kakunvr.manaco.Editor
             ["EyeType.BothPupil"]         = "両目瞳孔",
             ["EyeType.LeftPupil"]         = "左目瞳孔",
             ["EyeType.RightPupil"]        = "右目瞳孔",
+            ["Tutorial.SelectEyeType"]       = "{0}を選んでください",
+            ["Tutorial.SelectSourceEyeType"] = "コピー元の{0}を選んでください",
             ["Message.MaterialNotSet"]    = "カスタムマテリアルが未設定です。",
             ["Message.OpenFromInspector"] = "Inspectorの「UV エディタを開く」ボタンから開いてください。",
             ["Message.RegionDeleted"]     = "リージョンが削除されました。",
@@ -139,6 +142,20 @@ namespace com.kakunvr.manaco.Editor
         /// </summary>
         public static string T(string key, params object[] args)
             => string.Format(T(key), args);
+
+        /// <summary>
+        /// EyeType をローカライズした名称に変換する。
+        /// </summary>
+        public static string GetEyeTypeName(Manaco.EyeType eyeType) => eyeType switch
+        {
+            Manaco.EyeType.Both       => T("EyeType.Both"),
+            Manaco.EyeType.Left       => T("EyeType.Left"),
+            Manaco.EyeType.Right      => T("EyeType.Right"),
+            Manaco.EyeType.BothPupil  => T("EyeType.BothPupil"),
+            Manaco.EyeType.LeftPupil  => T("EyeType.LeftPupil"),
+            Manaco.EyeType.RightPupil => T("EyeType.RightPupil"),
+            _                         => eyeType.ToString(),
+        };
 
         /// <summary>
         /// 利用可能な言語の一覧を (codes, names) のペアで返す。

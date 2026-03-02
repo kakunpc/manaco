@@ -174,6 +174,9 @@ namespace com.kakunvr.manaco.Editor
                 LoadPresets();
             EditorGUILayout.EndHorizontal();
 
+            // チュートリアル: Island 未設定のリージョンを一覧表示
+            DrawIslandTutorials((Manaco)target);
+
             EditorGUILayout.Space(8);
             EditorGUILayout.LabelField(ManacoLocale.T("Label.CustomMaterial"), EditorStyles.boldLabel);
 
@@ -211,6 +214,9 @@ namespace com.kakunvr.manaco.Editor
             if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50)))
                 LoadPresets();
             EditorGUILayout.EndHorizontal();
+
+            // チュートリアル: Island 未設定のリージョンを一覧表示
+            DrawIslandTutorials((Manaco)target);
 
             EditorGUILayout.Space(8);
 
@@ -484,6 +490,47 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.Space(4);
 
             return false;
+        }
+
+        // ================================================================
+        //  チュートリアル（Island 未設定リージョンの警告＋「選ぶ」ボタン）
+        // ================================================================
+
+        private void DrawIslandTutorials(Manaco comp)
+        {
+            bool any = false;
+            for (int i = 0; i < comp.eyeRegions.Count; i++)
+            {
+                var region = comp.eyeRegions[i];
+                string eyeTypeName = ManacoLocale.GetEyeTypeName(region.eyeType);
+
+                // コピー先（targetRenderer 側）の Island 未設定チェック
+                bool destMissing = region.eyePolygonRegions == null || region.eyePolygonRegions.Length == 0;
+                if (destMissing)
+                {
+                    if (!any) { EditorGUILayout.Space(4); any = true; }
+                    EditorGUILayout.HelpBox(
+                        ManacoLocale.T("Tutorial.SelectEyeType", eyeTypeName),
+                        MessageType.Info);
+                    if (GUILayout.Button(ManacoLocale.T("Button.Select")))
+                        ManacoWindow.OpenWith(comp, i);
+                }
+
+                // CopyEyeFromAvatar モードのみ: コピー元 Island 未設定チェック
+                if (comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
+                {
+                    bool srcMissing = region.sourceEyePolygonRegions == null || region.sourceEyePolygonRegions.Length == 0;
+                    if (srcMissing)
+                    {
+                        if (!any) { EditorGUILayout.Space(4); any = true; }
+                        EditorGUILayout.HelpBox(
+                            ManacoLocale.T("Tutorial.SelectSourceEyeType", eyeTypeName),
+                            MessageType.Info);
+                        if (GUILayout.Button(ManacoLocale.T("Button.Select")))
+                            ManacoWindow.OpenForSource(comp, i);
+                    }
+                }
+            }
         }
 
         private bool _showAdvanced = false;

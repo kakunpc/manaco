@@ -4,6 +4,14 @@ using UnityEngine;
 
 namespace com.kakunvr.manaco.Editor
 {
+    // SceneView ハイライト用の定数
+    internal static class ManacoSceneHighlight
+    {
+        public static readonly Color FillBase   = new Color(0.20f, 1.00f, 0.45f, 0.18f);
+        public static readonly Color BorderBase = new Color(0.20f, 1.00f, 0.45f, 0.80f);
+        public const float PulseSpeed = 2.5f;   // Hz
+        public const float PolyLineWidth = 2.5f;
+    }
     /// <summary>
     /// 1つのEyeRegionに対してUV領域をインタラクティブに設定するEditorWindow。
     /// テクスチャ上で左クリック → UVIslandを追加、右クリック → 削除。
@@ -18,6 +26,9 @@ namespace com.kakunvr.manaco.Editor
         // ---- ソースモードフラグ ----
         private bool _isSourceMode;
 
+        // ---- SceneView ハイライト ----
+        private double _lastSceneRepaintTime;
+
         // ---- プレビューキャッシュ ----
         private Texture2D _previewTexture;
         private Vector2[] _cachedUVs;
@@ -28,6 +39,33 @@ namespace com.kakunvr.manaco.Editor
         private Vector2 _leftPanelScroll;
         private const float LeftPanelWidth = 260f;
         private static readonly Color SelectionColor = new Color(0.2f, 1.0f, 0.4f);
+
+        // ============================================================
+        //  ライフサイクル
+        // ============================================================
+
+        private void OnEnable()
+        {
+            SceneView.duringSceneGui   += OnSceneGUI;
+            EditorApplication.update   += OnEditorUpdate;
+        }
+
+        private void OnDisable()
+        {
+            SceneView.duringSceneGui   -= OnSceneGUI;
+            EditorApplication.update   -= OnEditorUpdate;
+            SceneView.RepaintAll();
+        }
+
+        // 点滅のために Scene View を定期再描画（~30fps に絞る）
+        private void OnEditorUpdate()
+        {
+            if (_selectedTris == null || _selectedTris.Count == 0) return;
+            double now = EditorApplication.timeSinceStartup;
+            if (now - _lastSceneRepaintTime < 1.0 / 30.0) return;
+            _lastSceneRepaintTime = now;
+            SceneView.RepaintAll();
+        }
 
         // ============================================================
         //  開き方（Inspectorからのみ）
@@ -289,6 +327,30 @@ namespace com.kakunvr.manaco.Editor
         private void DrawRightPanel()
         {
             EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
+
+            // ---- Island 未設定時のガイダンスメッセージ（上部に大きく表示）----
+            if (_cachedUVs != null && _target != null && _regionIndex < _target.eyeRegions.Count)
+            {
+                var region = _target.eyeRegions[_regionIndex];
+                var polygonRegions = _isSourceMode ? region.sourceEyePolygonRegions : region.eyePolygonRegions;
+                bool hasIslands = polygonRegions != null && polygonRegions.Length > 0;
+                if (!hasIslands)
+                {
+                    string eyeTypeName = ManacoLocale.GetEyeTypeName(region.eyeType);
+                    string msg = _isSourceMode
+                        ? ManacoLocale.T("Tutorial.SelectSourceEyeType", eyeTypeName)
+                        : ManacoLocale.T("Tutorial.SelectEyeType", eyeTypeName);
+
+                    var style = new GUIStyle(EditorStyles.boldLabel)
+                    {
+                        fontSize = 16,
+                        wordWrap = true,
+                        alignment = TextAnchor.MiddleCenter,
+                        normal = { textColor = new Color(0.85f, 0.95f, 1f) },
+                    };
+                    EditorGUILayout.LabelField(msg, style, GUILayout.Height(38));
+                }
+            }
 
             var panelRect = GUILayoutUtility.GetRect(GUIContent.none, GUIStyle.none,
                 GUILayout.ExpandWidth(true), GUILayout.ExpandHeight(true));
@@ -570,6 +632,55 @@ namespace com.kakunvr.manaco.Editor
             }
 
             return new List<int>(visited);
+        }
+
+        // ============================================================
+        //  Scene View ハイライト
+        // ============================================================
+
+        private void OnSceneGUI(SceneView _)
+        {
+            if (_target == null || _regionIndex >= _target.eyeRegions.Count) return;
+            if (_cachedTriangles == null || _selectedTris == null || _selectedTris.Count == 0) return;
+
+            var region = _target.eyeRegions[_regionIndex];
+            var smr = _isSourceMode ? region.sourceRenderer : region.targetRenderer;
+            if (smr == null) return;
+
+            var mesh = smr.sharedMesh;
+            if (mesh == null) return;
+
+            var verts     = mesh.vertices;
+            var tf        = smr.transform;
+
+            // 点滅値（0→1→0 の正弦波）
+            float pulse = 0.5f + 0.5f * Mathf.Sin(
+                (float)(EditorApplication.timeSinceStartup * ManacoSceneHighlight.PulseSpeed * Mathf.PI * 2.0));
+
+            var fillColor   = ManacoSceneHighlight.FillBase;
+            fillColor.a     = Mathf.Lerp(0.05f, 0.35f, pulse);
+
+            var borderColor = ManacoSceneHighlight.BorderBase;
+            borderColor.a   = Mathf.Lerp(0.50f, 1.00f, pulse);
+
+            foreach (int triIdx in _selectedTris)
+            {
+                if (triIdx >= _cachedTriangles.Length) continue;
+                var tri = _cachedTriangles[triIdx];
+                if (tri[0] >= verts.Length || tri[1] >= verts.Length || tri[2] >= verts.Length) continue;
+
+                var p0 = tf.TransformPoint(verts[tri[0]]);
+                var p1 = tf.TransformPoint(verts[tri[1]]);
+                var p2 = tf.TransformPoint(verts[tri[2]]);
+
+                // 塗りつぶし
+                Handles.color = fillColor;
+                Handles.DrawAAConvexPolygon(p0, p1, p2);
+
+                // 輪郭線
+                Handles.color = borderColor;
+                Handles.DrawAAPolyLine(ManacoSceneHighlight.PolyLineWidth, p0, p1, p2, p0);
+            }
         }
 
         private static long QuantizeUV(Vector2 uv)
