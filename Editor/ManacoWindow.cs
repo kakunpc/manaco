@@ -29,6 +29,10 @@ namespace com.kakunvr.manaco.Editor
         // ---- SceneView ハイライト ----
         private double _lastSceneRepaintTime;
 
+        // ---- 選択可能な SMR リスト ----
+        private SkinnedMeshRenderer[] _availableSmrs = new SkinnedMeshRenderer[0];
+        private string[]              _smrNames       = new string[0];
+
         // ---- プレビューキャッシュ ----
         private Texture2D _previewTexture;
         private Vector2[] _cachedUVs;
@@ -100,6 +104,7 @@ namespace com.kakunvr.manaco.Editor
             _target = target;
             _regionIndex = regionIndex;
             _so = target != null ? new SerializedObject(target) : null;
+            RefreshSmrList();
             RefreshPreviewCache();
 
             if (target != null && regionIndex < target.eyeRegions.Count)
@@ -111,10 +116,50 @@ namespace com.kakunvr.manaco.Editor
             _target = target;
             _regionIndex = regionIndex;
             _so = target != null ? new SerializedObject(target) : null;
+            RefreshSmrList();
             RefreshPreviewCache();
 
             if (target != null && regionIndex < target.eyeRegions.Count)
                 titleContent = new GUIContent($"Source UV [{regionIndex}]");
+        }
+
+        // ============================================================
+        //  SMR リストの更新
+        // ============================================================
+
+        private void RefreshSmrList()
+        {
+            _availableSmrs = new SkinnedMeshRenderer[0];
+            _smrNames       = new string[0];
+            if (_target == null) return;
+
+            SkinnedMeshRenderer[] smrs;
+            if (_isSourceMode)
+            {
+                // ソースモード: コピー元 prefab 配下の SMR を列挙
+                if (_target.sourceAvatarPrefab == null) return;
+                smrs = _target.sourceAvatarPrefab.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            }
+            else
+            {
+                // 通常モード: アバタールート配下の SMR を列挙
+                Transform root = _target.transform.root;
+                var descriptor = _target.GetComponentInParent<VRC.SDKBase.VRC_AvatarDescriptor>();
+                if (descriptor != null)
+                    root = descriptor.transform;
+                else
+                {
+                    var animator = _target.GetComponentInParent<Animator>();
+                    if (animator != null) root = animator.transform;
+                }
+                smrs = root.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+            }
+
+            _availableSmrs = smrs;
+            var names = new string[smrs.Length];
+            for (int i = 0; i < smrs.Length; i++)
+                names[i] = smrs[i].name;
+            _smrNames = names;
         }
 
         // ============================================================
@@ -264,16 +309,66 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.BeginVertical(EditorStyles.helpBox);
 
             var smr = rendererProp.objectReferenceValue as SkinnedMeshRenderer;
-            EditorGUI.BeginDisabledGroup(true);
-            EditorGUILayout.ObjectField("SkinnedMeshRenderer", smr, typeof(SkinnedMeshRenderer), true);
-            EditorGUI.EndDisabledGroup();
 
+            // ---- Mesh (SMR) 切り替えポップアップ ----
+            if (_availableSmrs.Length > 0)
+            {
+                // 現在の SMR の選択インデックスを検索（見つからない場合は 0）
+                int currentSmrIdx = 0;
+                for (int i = 0; i < _availableSmrs.Length; i++)
+                {
+                    if (_availableSmrs[i] == smr) { currentSmrIdx = i; break; }
+                }
+
+                EditorGUI.BeginChangeCheck();
+                int newSmrIdx = EditorGUILayout.Popup(
+                    ManacoLocale.T("Label.Renderer"), currentSmrIdx, _smrNames);
+                if (EditorGUI.EndChangeCheck() && newSmrIdx != currentSmrIdx)
+                {
+                    rendererProp.objectReferenceValue = _availableSmrs[newSmrIdx];
+                    // スロット番号をリセット（別 Mesh はスロット構成が異なるため）
+                    matIndexProp.intValue = 0;
+                    _so.ApplyModifiedProperties();
+                    smr = _availableSmrs[newSmrIdx];
+                    RefreshPreviewCache();
+                }
+            }
+            else
+            {
+                // SMR リストが空の場合は読み取り専用の ObjectField を表示
+                EditorGUI.BeginDisabledGroup(true);
+                EditorGUILayout.ObjectField(
+                    ManacoLocale.T("Label.Renderer"), smr, typeof(SkinnedMeshRenderer), true);
+                EditorGUI.EndDisabledGroup();
+            }
+
+            // ---- マテリアルスロット: ◀ / 数値 / ▶ で操作できる行
+            int maxSlot = smr != null ? Mathf.Max(0, smr.sharedMaterials.Length - 1) : 99;
             EditorGUI.BeginChangeCheck();
-            EditorGUILayout.PropertyField(matIndexProp, new GUIContent(ManacoLocale.T("Label.MaterialSlot")));
+            EditorGUILayout.BeginHorizontal();
+            EditorGUILayout.LabelField(ManacoLocale.T("Label.MaterialSlot"), GUILayout.MinWidth(70));
+            EditorGUI.BeginDisabledGroup(matIndexProp.intValue <= 0);
+            if (GUILayout.Button("◀", GUILayout.Width(26)))
+                matIndexProp.intValue = Mathf.Max(0, matIndexProp.intValue - 1);
+            EditorGUI.EndDisabledGroup();
+            matIndexProp.intValue = Mathf.Clamp(
+                EditorGUILayout.IntField(matIndexProp.intValue, GUILayout.Width(36)),
+                0, maxSlot);
+            EditorGUI.BeginDisabledGroup(matIndexProp.intValue >= maxSlot);
+            if (GUILayout.Button("▶", GUILayout.Width(26)))
+                matIndexProp.intValue = Mathf.Min(maxSlot, matIndexProp.intValue + 1);
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndHorizontal();
             if (EditorGUI.EndChangeCheck())
             {
                 _so.ApplyModifiedProperties();
                 RefreshPreviewCache();
+            }
+
+            // 複数スロットがある場合にヒントを表示
+            if (smr != null && smr.sharedMaterials.Length > 1)
+            {
+                EditorGUILayout.HelpBox(ManacoLocale.T("Message.MatSlotHint"), MessageType.Info);
             }
 
             EditorGUILayout.EndVertical();

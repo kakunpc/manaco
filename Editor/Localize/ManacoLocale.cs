@@ -61,6 +61,7 @@ namespace com.kakunvr.manaco.Editor
             ["Tutorial.SelectEyeType"]       = "{0}を選んでください",
             ["Tutorial.SelectSourceEyeType"] = "コピー元の{0}を選んでください",
             ["Message.MaterialNotSet"]    = "カスタムマテリアルが未設定です。",
+            ["Message.MatSlotHint"]       = "メッシュが表示されない場合は ◀ ▶ でマテリアルスロットを切り替えてみてください",
             ["Message.OpenFromInspector"] = "Inspectorの「UV エディタを開く」ボタンから開いてください。",
             ["Message.RegionDeleted"]     = "リージョンが削除されました。",
             ["Message.ClickHint"]         = "右パネルをクリックして追加\n右クリックで削除",
