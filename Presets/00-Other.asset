@@ -14,6 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   avatarName: "\u3010Other\u3011\u305D\u306E\u4ED6\u306E\u30A2\u30D0\u30BF\u30FC"
   regions:
+  - eyeType: 0
+    targetRendererName: Body
+    materialIndex: 0
+    eyePolygonRegions: []
   - eyeType: 1
     targetRendererName: Body
     materialIndex: 0
@@ -22,11 +26,7 @@ MonoBehaviour:
     targetRendererName: Body
     materialIndex: 0
     eyePolygonRegions: []
-  - eyeType: 4
-    targetRendererName: Body
-    materialIndex: 0
-    eyePolygonRegions: []
-  - eyeType: 5
+  - eyeType: 3
     targetRendererName: Body
     materialIndex: 0
     eyePolygonRegions: []

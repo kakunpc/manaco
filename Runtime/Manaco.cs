@@ -15,10 +15,8 @@ namespace com.kakunvr.manaco
     {
         public enum EyeType
         {
-            Both,
             Left,
             Right,
-            BothPupil,
             LeftPupil,
             RightPupil
         }
@@ -39,7 +37,7 @@ namespace com.kakunvr.manaco
         public class EyeRegion
         {
             [Tooltip("対象の目")]
-            public EyeType eyeType = EyeType.Both;
+            public EyeType eyeType = EyeType.Left;
 
             [Tooltip("目のポリゴンが含まれるSkinnedMeshRenderer")]
             public SkinnedMeshRenderer targetRenderer;

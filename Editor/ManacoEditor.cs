@@ -350,10 +350,8 @@ namespace com.kakunvr.manaco.Editor
                 {
                     Manaco.EyeType.Left       => shaderDef.leftEyeMaterial,
                     Manaco.EyeType.Right      => shaderDef.rightEyeMaterial,
-                    Manaco.EyeType.Both       => shaderDef.bothEyeMaterial,
                     Manaco.EyeType.LeftPupil  => shaderDef.leftPupilMaterial,
                     Manaco.EyeType.RightPupil => shaderDef.rightPupilMaterial,
-                    Manaco.EyeType.BothPupil  => shaderDef.bothPupilMaterial,
                     _                         => null,
                 };
             }
@@ -456,10 +454,8 @@ namespace com.kakunvr.manaco.Editor
             var eyeTypeEnum = (Manaco.EyeType)eyeTypeProp.enumValueIndex;
             string eyeTypeStr = eyeTypeEnum switch
             {
-                Manaco.EyeType.Both       => ManacoLocale.T("EyeType.Both"),
                 Manaco.EyeType.Left       => ManacoLocale.T("EyeType.Left"),
                 Manaco.EyeType.Right      => ManacoLocale.T("EyeType.Right"),
-                Manaco.EyeType.BothPupil  => ManacoLocale.T("EyeType.BothPupil"),
                 Manaco.EyeType.LeftPupil  => ManacoLocale.T("EyeType.LeftPupil"),
                 Manaco.EyeType.RightPupil => ManacoLocale.T("EyeType.RightPupil"),
                 _                         => eyeTypeEnum.ToString(),

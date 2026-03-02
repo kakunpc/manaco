@@ -53,10 +53,8 @@ namespace com.kakunvr.manaco.Editor
             ["Toggle.NdmfPreview"]        = "NDMF Preview を有効にする",
             ["Toggle.FallbackTexture"]    = "フォールバックテクスチャを自動生成",
             ["Tooltip.FallbackTexture"]   = "ビルド時にシェーダーをレンダリングして _MainTex に設定します。VRChatセーフティー設定対策。",
-            ["EyeType.Both"]              = "両目",
             ["EyeType.Left"]              = "左目",
             ["EyeType.Right"]             = "右目",
-            ["EyeType.BothPupil"]         = "両目瞳孔",
             ["EyeType.LeftPupil"]         = "左目瞳孔",
             ["EyeType.RightPupil"]        = "右目瞳孔",
             ["Tutorial.SelectEyeType"]       = "{0}を選んでください",
@@ -150,10 +148,8 @@ namespace com.kakunvr.manaco.Editor
         /// </summary>
         public static string GetEyeTypeName(Manaco.EyeType eyeType) => eyeType switch
         {
-            Manaco.EyeType.Both       => T("EyeType.Both"),
             Manaco.EyeType.Left       => T("EyeType.Left"),
             Manaco.EyeType.Right      => T("EyeType.Right"),
-            Manaco.EyeType.BothPupil  => T("EyeType.BothPupil"),
             Manaco.EyeType.LeftPupil  => T("EyeType.LeftPupil"),
             Manaco.EyeType.RightPupil => T("EyeType.RightPupil"),
             _                         => eyeType.ToString(),

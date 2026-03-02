@@ -10,7 +10,7 @@ namespace com.kakunvr.manaco
         public class PresetRegion
         {
             [Tooltip("目の対象")]
-            public Manaco.EyeType eyeType = Manaco.EyeType.Both;
+            public Manaco.EyeType eyeType = Manaco.EyeType.Left;
 
             [Tooltip("対象のMeshRendererのオブジェクト名")]
             public string targetRendererName;
