@@ -32,6 +32,7 @@ namespace com.kakunvr.manaco.Editor
         // ---- 選択可能な SMR リスト ----
         private SkinnedMeshRenderer[] _availableSmrs = new SkinnedMeshRenderer[0];
         private string[]              _smrNames       = new string[0];
+        private int                   _smrIndex       = 0;
 
         // ---- プレビューキャッシュ ----
         private Texture2D _previewTexture;
@@ -160,6 +161,18 @@ namespace com.kakunvr.manaco.Editor
             for (int i = 0; i < smrs.Length; i++)
                 names[i] = smrs[i].name;
             _smrNames = names;
+
+            // 既に指定されているレンダラーのインデックスを初期値として設定
+            _smrIndex = 0;
+            if (_target != null && _regionIndex < _target.eyeRegions.Count)
+            {
+                var region = _target.eyeRegions[_regionIndex];
+                var currentSmr = _isSourceMode ? region.sourceRenderer : region.targetRenderer;
+                for (int i = 0; i < _availableSmrs.Length; i++)
+                {
+                    if (_availableSmrs[i] == currentSmr) { _smrIndex = i; break; }
+                }
+            }
         }
 
         // ============================================================
@@ -313,18 +326,12 @@ namespace com.kakunvr.manaco.Editor
             // ---- Mesh (SMR) 切り替えポップアップ ----
             if (_availableSmrs.Length > 0)
             {
-                // 現在の SMR の選択インデックスを検索（見つからない場合は 0）
-                int currentSmrIdx = 0;
-                for (int i = 0; i < _availableSmrs.Length; i++)
-                {
-                    if (_availableSmrs[i] == smr) { currentSmrIdx = i; break; }
-                }
-
                 EditorGUI.BeginChangeCheck();
                 int newSmrIdx = EditorGUILayout.Popup(
-                    ManacoLocale.T("Label.Renderer"), currentSmrIdx, _smrNames);
-                if (EditorGUI.EndChangeCheck() && newSmrIdx != currentSmrIdx)
+                    ManacoLocale.T("Label.Renderer"), _smrIndex, _smrNames);
+                if (EditorGUI.EndChangeCheck())
                 {
+                    _smrIndex = newSmrIdx;
                     rendererProp.objectReferenceValue = _availableSmrs[newSmrIdx];
                     // スロット番号をリセット（別 Mesh はスロット構成が異なるため）
                     matIndexProp.intValue = 0;

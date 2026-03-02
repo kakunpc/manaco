@@ -241,8 +241,8 @@ namespace com.kakunvr.manaco.Editor
                 LoadPresets();
             EditorGUILayout.EndHorizontal();
 
-            // チュートリアル: Island 未設定のリージョンを一覧表示
-            DrawIslandTutorials((Manaco)target);
+            // チュートリアル: コピー先 Island 未設定のリージョンのみ
+            DrawIslandTutorials((Manaco)target, showDest: true, showSrc: false);
 
             EditorGUILayout.Space(8);
 
@@ -275,6 +275,9 @@ namespace com.kakunvr.manaco.Editor
             if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50)))
                 LoadPresets();
             EditorGUILayout.EndHorizontal();
+
+            // チュートリアル: コピー元 Island 未設定のリージョンのみ
+            DrawIslandTutorials((Manaco)target, showDest: false, showSrc: true);
         }
 
         // ================================================================
@@ -522,7 +525,7 @@ namespace com.kakunvr.manaco.Editor
         //  チュートリアル（Island 未設定リージョンの警告＋「選ぶ」ボタン）
         // ================================================================
 
-        private void DrawIslandTutorials(Manaco comp)
+        private void DrawIslandTutorials(Manaco comp, bool showDest = true, bool showSrc = true)
         {
             bool any = false;
             for (int i = 0; i < comp.eyeRegions.Count; i++)
@@ -531,19 +534,22 @@ namespace com.kakunvr.manaco.Editor
                 string eyeTypeName = ManacoLocale.GetEyeTypeName(region.eyeType);
 
                 // コピー先（targetRenderer 側）の Island 未設定チェック
-                bool destMissing = region.eyePolygonRegions == null || region.eyePolygonRegions.Length == 0;
-                if (destMissing)
+                if (showDest)
                 {
-                    if (!any) { EditorGUILayout.Space(4); any = true; }
-                    EditorGUILayout.HelpBox(
-                        ManacoLocale.T("Tutorial.SelectEyeType", eyeTypeName),
-                        MessageType.Info);
-                    if (GUILayout.Button(ManacoLocale.T("Button.Select")))
-                        ManacoWindow.OpenWith(comp, i);
+                    bool destMissing = region.eyePolygonRegions == null || region.eyePolygonRegions.Length == 0;
+                    if (destMissing)
+                    {
+                        if (!any) { EditorGUILayout.Space(4); any = true; }
+                        EditorGUILayout.HelpBox(
+                            ManacoLocale.T("Tutorial.SelectEyeType", eyeTypeName),
+                            MessageType.Info);
+                        if (GUILayout.Button(ManacoLocale.T("Button.Select")))
+                            ManacoWindow.OpenWith(comp, i);
+                    }
                 }
 
                 // CopyEyeFromAvatar モードのみ: コピー元 Island 未設定チェック
-                if (comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
+                if (showSrc && comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
                 {
                     bool srcMissing = region.sourceEyePolygonRegions == null || region.sourceEyePolygonRegions.Length == 0;
                     if (srcMissing)
