@@ -192,6 +192,32 @@ namespace com.kakunvr.manaco.Editor
             if (GUILayout.Button(ManacoLocale.T("Button.Refresh"), GUILayout.Width(50)))
                 LoadShaders();
             EditorGUILayout.EndHorizontal();
+
+            // ---- マテリアル一覧（編集不可） ----
+            DrawMaterialList((Manaco)target);
+        }
+
+        private void DrawMaterialList(Manaco comp)
+        {
+            // null のマテリアルを除いて、表示すべきものがあるか確認
+            bool hasAny = false;
+            foreach (var region in comp.eyeRegions)
+                if (region.customMaterial != null) { hasAny = true; break; }
+            if (!hasAny) return;
+
+            EditorGUILayout.Space(6);
+            EditorGUILayout.LabelField(ManacoLocale.T("Label.MaterialList"), EditorStyles.boldLabel);
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUI.BeginDisabledGroup(true);
+            foreach (var region in comp.eyeRegions)
+            {
+                if (region.customMaterial == null) continue;
+                string eyeTypeName = ManacoLocale.GetEyeTypeName(region.eyeType);
+                EditorGUILayout.ObjectField(eyeTypeName, region.customMaterial, typeof(Material), false);
+            }
+            EditorGUI.EndDisabledGroup();
+            EditorGUILayout.EndVertical();
         }
 
         // ----------------------------------------------------------------

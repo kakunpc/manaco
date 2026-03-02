@@ -25,6 +25,7 @@ namespace com.kakunvr.manaco.Editor
             ["Label.Material"]            = "マテリアル",
             ["Label.Resolution"]          = "解像度",
             ["Label.Mode"]                = "モード",
+            ["Label.MaterialList"]        = "マテリアル一覧",
             ["Label.DestinationPreset"]   = "アバタープリセット（コピー先）",
             ["Label.SourceAvatar"]        = "コピー元のアバター",
             ["Label.SourcePreset"]        = "コピー元のアバタープリセット",
