@@ -21,7 +21,7 @@ slug: /tutorial
 
 [対応マテリアルを割り当てる（マテリアル再割当て）へ進む](/tutorial/material-reassignment)
 
-> [こういう画像を配置: 目のマテリアルを設定する完成イメージ]
+![このチュートリアルで最終的にできる状態の完成イメージ](../Images/set-material-sample.png)
 
 ### 他アバターの目の割当
 
@@ -31,4 +31,5 @@ slug: /tutorial
 
 [他アバターの目の割当へ進む](/tutorial/copy-eye-assignment)
 
-> [こういう画像を配置: コピー元アバターとコピー先アバターを並べたイメージ]
+
+![このチュートリアルで最終的にできる状態の完成イメージ](../Images/assign-sample.png)

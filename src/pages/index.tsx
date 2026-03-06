@@ -6,7 +6,7 @@ import styles from './index.module.css';
 
 const VCC_URL =
   'vcc://vpm/addRepo?url=https%3A%2F%2Fkakunpc.github.io%2Fkakunpc_vpm%2Findex.json';
-const BOOTH_URL = 'https://booth.pm/ja/search/MANACO';
+const BOOTH_URL = 'https://kakunvr.booth.pm/items/8059360';
 
 export default function Home(): JSX.Element {
   return (

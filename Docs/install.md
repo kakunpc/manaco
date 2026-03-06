@@ -58,7 +58,7 @@ BoothやGithubのリリースページ以外からの入手は、セキュリテ
 
 `VCC・ALCOM` を使わない場合だけ、この方法を使ってください。
 
-1. リリースから `Manaco.unitypackage` を取得する
+1. [booth](https://kakunvr.booth.pm/items/8059360) から `Manaco.unitypackage` をダウンロードする
 2. Unityプロジェクトへインポートする
 3. ダイアログを確認し問題がなければInstallする
 
