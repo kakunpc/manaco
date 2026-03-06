@@ -31,5 +31,6 @@ npm run build
 - `Docs/tutorial.md`
 - `Docs/tutorial-material-reassignment.md`
 - `Docs/tutorial-copy-eye-assignment.md`
-- `Docs/usage.md`
+- `Docs/distributor-avatar-preset.md`
+- `Docs/distributor-material-definition.md`
 - `Docs/cautions.md`

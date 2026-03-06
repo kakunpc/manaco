@@ -18,7 +18,16 @@ const sidebars: SidebarsConfig = {
         'tutorial-copy-eye-assignment',
       ],
     },
-    'usage',
+    {
+      type: 'category',
+      label: 'アセット配布者向け',
+      collapsible: true,
+      collapsed: false,
+      items: [
+        'distributor-avatar-preset',
+        'distributor-material-definition',
+      ],
+    },
     'cautions',
   ],
 };
