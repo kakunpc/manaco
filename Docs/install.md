@@ -9,13 +9,11 @@ slug: /install
 MANACOを使い始める前に、必要なものを確認して、Unityプロジェクトへ導入します。  
 初めて触る場合は、まずこのページの手順どおりに進めてください。
 
-> [こういう画像を配置: インストール完了までの流れがひと目でわかる全体図]
+## 注意点
 
-## 先に確認すること
-
-- Unity `2022.3` 系
-- VRChat SDK Avatars `>=3.7.0 <3.11.0`
-- NDMF（`nadena.dev.ndmf`） `>=1.8.0 <2.0.0`
+インストールする場合は必ずこの手順で案内している方法で行ってください。    
+BoothやGithubのリリースページ以外からの入手は、セキュリティ上のリスクがあるためおすすめしません。  
+本ツールはここで書かれている方法以外での配布手段は提供していません。
 
 ## おすすめの導入方法
 
@@ -37,16 +35,16 @@ MANACOを使い始める前に、必要なものを確認して、Unityプロジ
 
 3. `ALCOM` が起動した場合は、表示された確認ダイアログでリポジトリ追加を実行する
 
-
-> [こういう画像を配置: ALCOM 側でリポジトリ追加を確認する画面]
+![ALCOM の Add Repository ダイアログ](../Images/alcom-add_repository.png)
 
 ### 2. プロジェクトにMANACOを追加する
 
 1. `VCC` または `ALCOM` で対象プロジェクトを開く
-2. パッケージ一覧から `MANACO` を探す
-3. `+` ボタンで追加する
+2. 対象のプロジェクトの `Manage Project` を押す ALCOMの場合は `管理` を押す
+3. 一覧から `MANACO` を探す
+4. `+` ボタンで追加する
 
-> [こういう画像を配置: VCC・ALCOM で MANACO を追加する場所]
+![VCC で MANACO を追加する](../Images/install_vcc_manaco.png)
 
 ### 3. Unityで導入を確認する
 
@@ -54,7 +52,7 @@ MANACOを使い始める前に、必要なものを確認して、Unityプロジ
 2. Hierarchy上のアバターを右クリックする
 3. `ちゃとらとりー/Manaco(まなこ)` が表示されるか確認する
 
-> [こういう画像を配置: Hierarchy 右クリックメニューに `ちゃとらとりー/Manaco(まなこ)` が見えている状態]
+![Hierarchy 右クリックメニューに `ちゃとらとりー/Manaco(まなこ)` が見えている状態](../Images/install-manaco-check.png)
 
 ## 方法2: UnityPackage
 
@@ -62,9 +60,11 @@ MANACOを使い始める前に、必要なものを確認して、Unityプロジ
 
 1. リリースから `Manaco.unitypackage` を取得する
 2. Unityプロジェクトへインポートする
-3. インポート後、依存関係（VRChat SDK / NDMF）の解決状態を確認する
+3. ダイアログを確認し問題がなければInstallする
 
-> [こういう画像を配置: `Manaco.unitypackage` を Unity にインポートしている画面]
+![Unity に `Manaco.unitypackage` をインポートしている画面](../Images/install-unity-package.png)
+
+![インストール確認画面](../Images/install-unity-package2.png)
 
 ## インストール確認
 
@@ -72,7 +72,7 @@ MANACOを使い始める前に、必要なものを確認して、Unityプロジ
 2. 右クリックメニューから `ちゃとらとりー/Manaco(まなこ)` が表示されるか確認
 3. 追加後、`Manaco` コンポーネントのInspectorが表示されれば導入完了
 
-> [こういう画像を配置: `Manaco` コンポーネントが Inspector に表示されている状態]
+![Hierarchy 右クリックメニューに `ちゃとらとりー/Manaco(まなこ)` が見えている状態](../Images/install-manaco-check.png)
 
 ## 次に読むページ
 
