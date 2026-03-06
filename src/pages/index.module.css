@@ -1,0 +1,174 @@
+.page {
+  min-height: 100vh;
+  background:
+    radial-gradient(85rem 45rem at 8% -10%, rgba(15, 82, 52, 0.32), transparent 55%),
+    radial-gradient(70rem 38rem at 100% 0%, rgba(249, 201, 122, 0.2), transparent 58%),
+    linear-gradient(180deg, #f9fcfa 0%, #ecf4ef 48%, #f7faf8 100%);
+  padding: 2.5rem 1.2rem 4.5rem;
+  color: #12261a;
+  font-family: 'Avenir Next', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', sans-serif;
+}
+
+.hero {
+  position: relative;
+  overflow: hidden;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 5rem 2rem 4rem;
+  border-radius: 28px;
+  border: 1px solid rgba(18, 38, 26, 0.08);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 248, 242, 0.9));
+  box-shadow: 0 22px 60px rgba(12, 34, 22, 0.12);
+  text-align: center;
+}
+
+.glowA,
+.glowB {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.glowA {
+  width: 320px;
+  height: 320px;
+  top: -120px;
+  left: -90px;
+  background: radial-gradient(circle, rgba(34, 176, 110, 0.28), transparent 72%);
+}
+
+.glowB {
+  width: 260px;
+  height: 260px;
+  top: -90px;
+  right: -80px;
+  background: radial-gradient(circle, rgba(249, 178, 95, 0.22), transparent 72%);
+}
+
+.kicker {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  letter-spacing: 0.12em;
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #2d6f4f;
+}
+
+.title {
+  position: relative;
+  z-index: 1;
+  margin: 0.7rem 0 0;
+  font-size: clamp(2.4rem, 5.6vw, 4.7rem);
+  line-height: 1;
+  letter-spacing: 0.04em;
+}
+
+.subtitle {
+  position: relative;
+  z-index: 1;
+  margin: 0.8rem auto 0;
+  max-width: 44rem;
+  font-size: clamp(0.86rem, 1.45vw, 1rem);
+  line-height: 1.5;
+  color: #2f5743;
+}
+
+.lead {
+  position: relative;
+  z-index: 1;
+  margin: 1rem 0 0;
+  font-size: clamp(1.05rem, 2.1vw, 1.32rem);
+  color: #2f4a3a;
+}
+
+.ctaRow {
+  position: relative;
+  z-index: 1;
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.76rem 1.36rem;
+  border-radius: 999px;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.cta:hover {
+  transform: translateY(-1px);
+}
+
+.ctaPrimary {
+  color: #ffffff;
+  background: linear-gradient(120deg, #13693f, #1a9058);
+  box-shadow: 0 10px 28px rgba(20, 116, 70, 0.28);
+}
+
+.ctaPrimary:hover {
+  color: #ffffff;
+  background: linear-gradient(120deg, #0f5a36, #177e4d);
+}
+
+.ctaGhost {
+  color: #173d2a;
+  border: 1px solid rgba(23, 61, 42, 0.22);
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.featureSection {
+  max-width: 960px;
+  margin: 1.2rem auto 0;
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.featureCard {
+  display: block;
+  padding: 1.3rem 1.15rem;
+  border-radius: 16px;
+  border: 1px solid rgba(15, 44, 29, 0.1);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 10px 24px rgba(17, 39, 27, 0.08);
+}
+
+.featureTitle {
+  margin: 0;
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.featureText {
+  margin: 0.6rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.62;
+  color: #34513f;
+}
+
+@media (max-width: 768px) {
+  .hero {
+    padding: 3.2rem 1.1rem 2.7rem;
+    border-radius: 22px;
+  }
+
+  .featureGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .cta {
+    width: 100%;
+  }
+}
