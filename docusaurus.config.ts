@@ -72,7 +72,7 @@ const config: Config = {
     footer: {
       style: 'dark',
       links: [],
-      copyright: `Copyright © ${new Date().getFullYear()} MANACO`,
+      copyright: `Copyright © ${new Date().getFullYear()} kakunpc`,
     },
     prism: {
       theme: prismThemes.github,
