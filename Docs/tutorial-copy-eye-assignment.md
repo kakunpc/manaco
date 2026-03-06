@@ -7,9 +7,10 @@ slug: /tutorial/copy-eye-assignment
 
 ## 目的
 このチュートリアルでは、別アバターの目表現を参照しながら、コピー先アバターへ割り当ててアップロード準備するまでの流れを説明します。  
-基本操作がまだ不安な場合は、先に [マテリアル再割当て](/tutorial/material-reassignment) を読むのがおすすめです。
+基本操作がまだ不安な場合は、先に [対応マテリアルを割り当てる（マテリアル再割当て）](/tutorial/material-reassignment) を読むのがおすすめです。
 
-> [こういう画像を配置: コピー元とコピー先で目表現を移している完成イメージ]
+
+![このチュートリアルで最終的にできる状態の完成イメージ](../Images/assign-sample.png)
 
 ## はじめる前に
 
@@ -34,6 +35,9 @@ slug: /tutorial/copy-eye-assignment
 
 > [こういう画像を配置: `Mode` を `CopyEyeFromAvatar` に切り替えて `Source Avatar` を設定する画面]
 
+![このチュートリアルで最終的にできる状態の完成イメージ](../Images/assign-inspector.png)
+
+
 ## 手順3: コピー先の目領域を確認する
 
 1. コピー先アバター側の `Advanced Settings` を開き、適用先の `EyeRegion` を確認または調整
@@ -56,4 +60,4 @@ slug: /tutorial/copy-eye-assignment
 
 ## 困ったとき
 
-- まず基本的な設定の流れを確認したい場合は、[マテリアル再割当て](/tutorial/material-reassignment) を参照してください。
+- まず基本的な設定の流れを確認したい場合は、[対応マテリアルを割り当てる（マテリアル再割当て）](/tutorial/material-reassignment) を参照してください。
