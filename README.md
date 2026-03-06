@@ -23,7 +23,7 @@ npm run build
 2. ローカルで表示確認（`npm run start`）
 3. ビルド確認（`npm run build`）
 4. PR を作成
-5. `main` へマージ後、GitHub Pages に自動反映
+5. `doc` へマージ後、GitHub Pages に自動反映
 
 ## ページ構成
 - `Docs/features.md`
