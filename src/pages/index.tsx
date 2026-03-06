@@ -29,7 +29,7 @@ export default function Home(): JSX.Element {
               VCC・ALCOMに追加
             </Link>
             <Link className={`${styles.cta} ${styles.ctaGhost}`} to={BOOTH_URL}>
-              Boothからダウンロード
+              BOOTHからダウンロード
             </Link>
             <Link className={`${styles.cta} ${styles.ctaGhost}`} to="/tutorial">
               チュートリアル

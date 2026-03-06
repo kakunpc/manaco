@@ -11,8 +11,8 @@ MANACOを使い始める前に、必要なものを確認して、Unityプロジ
 
 ## 注意点
 
-インストールする場合は必ずこの手順で案内している方法で行ってください。    
-BoothやGithubのリリースページ以外からの入手は、セキュリティ上のリスクがあるためおすすめしません。  
+インストールする場合は、必ずこの手順で案内している方法で行ってください。
+BOOTHやGitHubのリリースページ以外からの入手は、セキュリティ上のリスクがあるためおすすめしません。  
 本ツールはここで書かれている方法以外での配布手段は提供していません。
 
 ## おすすめの導入方法
@@ -28,29 +28,29 @@ BoothやGithubのリリースページ以外からの入手は、セキュリテ
 
 <div style={{ marginBottom: '1.25rem' }} />
 
-1. 上の `VCC・ALCOMに追加` ボタンをクリック
-2. `VCC` が起動した場合は `Add Repository` ダイアログの内容を確認し、`I Understand, Add Repository` をクリックする
+1. 上の `VCC・ALCOMに追加` ボタンをクリックします。
+2. `VCC` が起動した場合は、`Add Repository` ダイアログの内容を確認し、`I Understand, Add Repository` をクリックします。
 
 ![VCC の Add Repository ダイアログ](../Images/vcc-add_repository.png)
 
-3. `ALCOM` が起動した場合は、表示された確認ダイアログでリポジトリ追加を実行する
+3. `ALCOM` が起動した場合は、表示された確認ダイアログでリポジトリ追加を実行します。
 
 ![ALCOM の Add Repository ダイアログ](../Images/alcom-add_repository.png)
 
 ### 2. プロジェクトにMANACOを追加する
 
-1. `VCC` または `ALCOM` で対象プロジェクトを開く
-2. 対象のプロジェクトの `Manage Project` を押す ALCOMの場合は `管理` を押す
-3. 一覧から `MANACO` を探す
-4. `+` ボタンで追加する
+1. `VCC` または `ALCOM` で対象プロジェクトを開きます。
+2. 対象のプロジェクトで `Manage Project` を押します。ALCOMの場合は `管理` を押します。
+3. 一覧から `MANACO` を探します。
+4. `+` ボタンで追加します。
 
 ![VCC で MANACO を追加する](../Images/install_vcc_manaco.png)
 
 ### 3. Unityで導入を確認する
 
-1. Unityで対象プロジェクトを開く
-2. Hierarchy上のアバターを右クリックする
-3. `ちゃとらとりー/Manaco(まなこ)` が表示されるか確認する
+1. Unityで対象プロジェクトを開きます。
+2. Hierarchy上のアバターを右クリックします。
+3. `ちゃとらとりー/Manaco(まなこ)` が表示されるか確認します。
 
 ![Hierarchy 右クリックメニューに `ちゃとらとりー/Manaco(まなこ)` が見えている状態](../Images/install-manaco-check.png)
 
@@ -58,9 +58,9 @@ BoothやGithubのリリースページ以外からの入手は、セキュリテ
 
 `VCC・ALCOM` を使わない場合だけ、この方法を使ってください。
 
-1. [booth](https://kakunvr.booth.pm/items/8059360) から `Manaco.unitypackage` をダウンロードする
-2. Unityプロジェクトへインポートする
-3. ダイアログを確認し問題がなければInstallする
+1. [BOOTH](https://kakunvr.booth.pm/items/8059360) から `Manaco.unitypackage` をダウンロードします。
+2. Unityプロジェクトへインポートします。
+3. ダイアログを確認し、問題がなければInstallします。
 
 ![Unity に `Manaco.unitypackage` をインポートしている画面](../Images/install-unity-package.png)
 
@@ -68,9 +68,9 @@ BoothやGithubのリリースページ以外からの入手は、セキュリテ
 
 ## インストール確認
 
-1. UnityでHierarchy上のアバターを選択
-2. 右クリックメニューから `ちゃとらとりー/Manaco(まなこ)` が表示されるか確認
-3. 追加後、`Manaco` コンポーネントのInspectorが表示されれば導入完了
+1. UnityでHierarchy上のアバターを選択します。
+2. 右クリックメニューから `ちゃとらとりー/Manaco(まなこ)` が表示されるか確認します。
+3. 追加後、`Manaco` コンポーネントのInspectorが表示されれば導入完了です。
 
 ![Hierarchy 右クリックメニューに `ちゃとらとりー/Manaco(まなこ)` が見えている状態](../Images/install-manaco-check.png)
 

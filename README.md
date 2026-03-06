@@ -1,6 +1,6 @@
 # manaco-docs
 
-MANACO 紹介サイトを Docusaurus で管理するリポジトリです。  
+MANACO紹介サイトをDocusaurusで管理するリポジトリです。  
 `main` へ push すると GitHub Pages に自動デプロイされます。
 
 ## 必要環境
