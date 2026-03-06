@@ -26,7 +26,7 @@ export default function Home(): JSX.Element {
 
           <div className={styles.ctaRow}>
             <Link className={`${styles.cta} ${styles.ctaPrimary}`} to={VCC_URL}>
-              VCCに追加
+              VCC・ALCOMに追加
             </Link>
             <Link className={`${styles.cta} ${styles.ctaGhost}`} to={BOOTH_URL}>
               Boothからダウンロード
