@@ -59,6 +59,10 @@ MonoBehaviour:
     value: Open UV Editor
   - key: Toggle.NdmfPreview
     value: Enable NDMF Preview
+  - key: Toggle.FastPreview
+    value: Fast Preview
+  - key: Message.FastPreviewWarning
+    value: "Fast Preview bakes the current blendshape deformation before rendering.\nAs a result, shape changes made during preview may not be reflected immediately.\nThis affects preview only and does not affect the final build."
   - key: Toggle.FallbackTexture
     value: Auto-generate Fallback Texture
   - key: Tooltip.FallbackTexture

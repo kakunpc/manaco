@@ -59,7 +59,12 @@ namespace com.kakunvr.manaco
             UnityEngine.Object.DestroyImmediate(component);
         }
 
-        public Mesh ApplyEyeSubMesh(Manaco.EyeRegion region, SkinnedMeshRenderer smr, Material overrideMaterial = null)
+        public Mesh ApplyEyeSubMesh(
+            Manaco.EyeRegion region,
+            SkinnedMeshRenderer smr,
+            Material overrideMaterial = null,
+            bool preserveBlendShapes = true,
+            Mesh bakedShapeMesh = null)
         {
             var originalMesh = smr.sharedMesh;
             if (originalMesh == null)
@@ -70,6 +75,19 @@ namespace com.kakunvr.manaco
 
             var mesh = UnityEngine.Object.Instantiate(originalMesh);
             mesh.name = originalMesh.name + "_Manaco";
+
+            if (bakedShapeMesh != null && bakedShapeMesh.vertexCount == mesh.vertexCount)
+            {
+                mesh.vertices = bakedShapeMesh.vertices;
+
+                var bakedNormals = bakedShapeMesh.normals;
+                if (bakedNormals != null && bakedNormals.Length == mesh.vertexCount)
+                    mesh.normals = bakedNormals;
+
+                var bakedTangents = bakedShapeMesh.tangents;
+                if (bakedTangents != null && bakedTangents.Length == mesh.vertexCount)
+                    mesh.tangents = bakedTangents;
+            }
 
             var uvs = mesh.uv;
             if (uvs.Length == 0)
@@ -160,8 +178,14 @@ namespace com.kakunvr.manaco
             float rangeV  = Mathf.Max(maxV - minV, 1e-5f);
 
             // ---- ブレンドシェイプを頂点数変更前に保存 ----
+            if (!preserveBlendShapes && mesh.blendShapeCount > 0)
+            {
+                // Preview only: avoid the full blendshape copy/rebuild cost.
+                mesh.ClearBlendShapes();
+            }
+
             int origVertCount = mesh.vertexCount;
-            int blendShapeCount = mesh.blendShapeCount;
+            int blendShapeCount = preserveBlendShapes ? mesh.blendShapeCount : 0;
             var blendShapeCache = new List<(string name, List<(float weight, Vector3[] dv, Vector3[] dn, Vector3[] dt)> frames)>(blendShapeCount);
             for (int si = 0; si < blendShapeCount; si++)
             {
@@ -299,23 +323,8 @@ namespace com.kakunvr.manaco
             int res = Mathf.Clamp(resolution, 64, 2048);
 
             // Graphics.Blit が source を _MainTex にセットするため、副作用を避けるために一時コピーでベイク
-            var tempMat = new Material(sourceMaterial);
-            var rt = RenderTexture.GetTemporary(res, res, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-            rt.filterMode = FilterMode.Bilinear;
-
-            Graphics.Blit(null, rt, tempMat);
-            UnityEngine.Object.DestroyImmediate(tempMat);
-
-            var prevActive = RenderTexture.active;
-            RenderTexture.active = rt;
-
-            var fallbackTex = new Texture2D(res, res, TextureFormat.RGBA32, false);
-            fallbackTex.ReadPixels(new Rect(0, 0, res, res), 0, 0);
-            fallbackTex.Apply(true);
-            fallbackTex.name = sourceMaterial.name + "_Fallback";
-
-            RenderTexture.active = prevActive;
-            RenderTexture.ReleaseTemporary(rt);
+            var fallbackTex = RenderMaterialToTexture(sourceMaterial, res, sourceMaterial.name + "_Fallback");
+            if (fallbackTex == null) return sourceMaterial;
 
             // 元のマテリアルをクローンして _MainTex にベイク済みテクスチャをセット
             var clonedMaterial = new Material(sourceMaterial);
@@ -325,6 +334,34 @@ namespace com.kakunvr.manaco
             // Debug.Log($"[Manaco] {sourceMaterial.name} のフォールバックテクスチャをベイクしました ({res}x{res})");
 
             return clonedMaterial;
+        }
+
+        private static Texture2D RenderMaterialToTexture(Material sourceMaterial, int resolution, string textureName)
+        {
+            var tempMat = new Material(sourceMaterial);
+            var rt = RenderTexture.GetTemporary(
+                resolution,
+                resolution,
+                0,
+                RenderTextureFormat.ARGB32,
+                RenderTextureReadWrite.sRGB);
+            rt.filterMode = FilterMode.Bilinear;
+
+            Graphics.Blit(null, rt, tempMat);
+            UnityEngine.Object.DestroyImmediate(tempMat);
+
+            var prevActive = RenderTexture.active;
+            RenderTexture.active = rt;
+
+            var texture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, false);
+            texture.ReadPixels(new Rect(0, 0, resolution, resolution), 0, 0);
+            texture.Apply(true);
+            texture.name = textureName;
+
+            RenderTexture.active = prevActive;
+            RenderTexture.ReleaseTemporary(rt);
+
+            return texture;
         }
 
         internal static long QuantizeUV(Vector2 uv)

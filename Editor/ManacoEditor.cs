@@ -110,6 +110,20 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.PropertyField(_useNdmfPreviewProp,
                 new GUIContent(ManacoLocale.T("Toggle.NdmfPreview")));
 
+            EditorGUI.BeginChangeCheck();
+            bool useFastPreview = EditorGUILayout.Toggle(
+                ManacoLocale.T("Toggle.FastPreview"),
+                ManacoProjectSettings.UseFastPreview);
+            if (EditorGUI.EndChangeCheck())
+                ManacoProjectSettings.UseFastPreview = useFastPreview;
+
+            if (ManacoProjectSettings.UseFastPreview)
+            {
+                EditorGUILayout.HelpBox(
+                    ManacoLocale.T("Message.FastPreviewWarning"),
+                    MessageType.Warning);
+            }
+
             EditorGUILayout.Space(8);
 
             _showAdvanced = EditorGUILayout.Foldout(_showAdvanced,

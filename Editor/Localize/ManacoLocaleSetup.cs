@@ -173,6 +173,8 @@ namespace com.kakunvr.manaco.Editor
                 E("Button.Select",             "Select"),
                 E("Button.OpenUVEditor",       "Open UV Editor"),
                 E("Toggle.NdmfPreview",        "Enable NDMF Preview"),
+                E("Toggle.FastPreview",        "Fast Preview"),
+                E("Message.FastPreviewWarning", "Fast Preview bakes the current blendshape deformation before rendering.\nAs a result, shape changes made during preview may not be reflected immediately.\nThis affects preview only and does not affect the final build."),
                 E("Toggle.FallbackTexture",    "Auto-generate Fallback Texture"),
                 E("Tooltip.FallbackTexture",   "Renders shader at build time and sets _MainTex. Protects against VRChat safety settings."),
                 E("EyeType.Left",              "Left"),

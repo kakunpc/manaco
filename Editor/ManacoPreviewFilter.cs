@@ -139,7 +139,20 @@ namespace com.kakunvr.manaco.Editor
                     if (!proxyMap.TryGetValue(region.targetRenderer, out var proxyRenderer)) continue;
                     if (proxyRenderer is not SkinnedMeshRenderer proxySmr) continue;
 
-                    var newMesh = pass.ApplyEyeSubMesh(region, proxySmr, eyeMat);
+                    Mesh bakedShapeMesh = null;
+                    if (ManacoProjectSettings.UseFastPreview)
+                    {
+                        bakedShapeMesh = new Mesh();
+                        proxySmr.BakeMesh(bakedShapeMesh);
+                        _createdMeshes.Add(bakedShapeMesh);
+                    }
+
+                    var newMesh = pass.ApplyEyeSubMesh(
+                        region,
+                        proxySmr,
+                        eyeMat,
+                        preserveBlendShapes: !ManacoProjectSettings.UseFastPreview,
+                        bakedShapeMesh: bakedShapeMesh);
                     if (newMesh != null)
                     {
                         _createdMeshes.Add(newMesh);
