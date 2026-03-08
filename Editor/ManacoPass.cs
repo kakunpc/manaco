@@ -14,6 +14,13 @@ namespace com.kakunvr.manaco
     /// </summary>
     public class ManacoPass
     {
+        internal sealed class PreviewMeshSnapshot
+        {
+            public Vector3[] Vertices { get; set; }
+            public Vector3[] Normals { get; set; }
+            public Vector4[] Tangents { get; set; }
+        }
+
         public void Execute(BuildContext ctx)
         {
             var components = ctx.AvatarRootObject
@@ -64,7 +71,8 @@ namespace com.kakunvr.manaco
             SkinnedMeshRenderer smr,
             Material overrideMaterial = null,
             bool preserveBlendShapes = true,
-            Mesh bakedShapeMesh = null)
+            Mesh bakedShapeMesh = null,
+            PreviewMeshSnapshot previewMeshSnapshot = null)
         {
             var originalMesh = smr.sharedMesh;
             if (originalMesh == null)
@@ -87,6 +95,19 @@ namespace com.kakunvr.manaco
                 var bakedTangents = bakedShapeMesh.tangents;
                 if (bakedTangents != null && bakedTangents.Length == mesh.vertexCount)
                     mesh.tangents = bakedTangents;
+            }
+            else if (previewMeshSnapshot != null && previewMeshSnapshot.Vertices != null &&
+                     previewMeshSnapshot.Vertices.Length == mesh.vertexCount)
+            {
+                mesh.vertices = previewMeshSnapshot.Vertices;
+
+                var previewNormals = previewMeshSnapshot.Normals;
+                if (previewNormals != null && previewNormals.Length == mesh.vertexCount)
+                    mesh.normals = previewNormals;
+
+                var previewTangents = previewMeshSnapshot.Tangents;
+                if (previewTangents != null && previewTangents.Length == mesh.vertexCount)
+                    mesh.tangents = previewTangents;
             }
 
             var uvs = mesh.uv;
@@ -297,6 +318,176 @@ namespace com.kakunvr.manaco
             smr.sharedMaterials = materials.ToArray();
 
             return mesh;
+        }
+
+        internal static PreviewMeshSnapshot CaptureBlendShapePreviewSnapshot(
+            SkinnedMeshRenderer meshSourceSmr,
+            SkinnedMeshRenderer weightSourceSmr)
+        {
+            var mesh = meshSourceSmr.sharedMesh;
+            if (weightSourceSmr == null) weightSourceSmr = meshSourceSmr;
+            if (mesh == null) return null;
+
+            int vertexCount = mesh.vertexCount;
+            if (vertexCount == 0 || mesh.blendShapeCount == 0) return null;
+
+            var vertices = mesh.vertices;
+            var normals = mesh.normals;
+            var tangents = mesh.tangents;
+
+            var deformedVertices = (Vector3[])vertices.Clone();
+            Vector3[] deformedNormals =
+                normals != null && normals.Length == vertexCount ? (Vector3[])normals.Clone() : null;
+            Vector4[] deformedTangents =
+                tangents != null && tangents.Length == vertexCount ? (Vector4[])tangents.Clone() : null;
+
+            var frameVertices = new Vector3[vertexCount];
+            var frameNormals = new Vector3[vertexCount];
+            var frameTangents = new Vector3[vertexCount];
+
+            for (int shapeIndex = 0; shapeIndex < mesh.blendShapeCount; shapeIndex++)
+            {
+                float weight = weightSourceSmr.GetBlendShapeWeight(shapeIndex);
+                if (Mathf.Approximately(weight, 0f)) continue;
+
+                int frameCount = mesh.GetBlendShapeFrameCount(shapeIndex);
+                if (frameCount == 0) continue;
+
+                ApplyBlendShapeWeight(mesh, shapeIndex, weight, frameVertices, frameNormals, frameTangents,
+                    deformedVertices, deformedNormals, deformedTangents);
+            }
+
+            return new PreviewMeshSnapshot
+            {
+                Vertices = deformedVertices,
+                Normals = deformedNormals,
+                Tangents = deformedTangents,
+            };
+        }
+
+        private static void ApplyBlendShapeWeight(
+            Mesh mesh,
+            int shapeIndex,
+            float weight,
+            Vector3[] frameVertices,
+            Vector3[] frameNormals,
+            Vector3[] frameTangents,
+            Vector3[] deformedVertices,
+            Vector3[] deformedNormals,
+            Vector4[] deformedTangents)
+        {
+            int frameCount = mesh.GetBlendShapeFrameCount(shapeIndex);
+            if (frameCount == 1)
+            {
+                float frameWeight = mesh.GetBlendShapeFrameWeight(shapeIndex, 0);
+                float factor = Mathf.Approximately(frameWeight, 0f) ? 0f : weight / frameWeight;
+                AccumulateBlendShapeFrame(mesh, shapeIndex, 0, factor, frameVertices, frameNormals, frameTangents,
+                    deformedVertices, deformedNormals, deformedTangents);
+                return;
+            }
+
+            int lowerFrame = 0;
+            int upperFrame = frameCount - 1;
+            for (int i = 0; i < frameCount; i++)
+            {
+                float frameWeight = mesh.GetBlendShapeFrameWeight(shapeIndex, i);
+                if (frameWeight <= weight) lowerFrame = i;
+                if (frameWeight >= weight)
+                {
+                    upperFrame = i;
+                    break;
+                }
+            }
+
+            if (lowerFrame == upperFrame)
+            {
+                float frameWeight = mesh.GetBlendShapeFrameWeight(shapeIndex, lowerFrame);
+                float factor = Mathf.Approximately(frameWeight, 0f) ? 0f : weight / frameWeight;
+                AccumulateBlendShapeFrame(mesh, shapeIndex, lowerFrame, factor, frameVertices, frameNormals, frameTangents,
+                    deformedVertices, deformedNormals, deformedTangents);
+                return;
+            }
+
+            float lowerWeight = mesh.GetBlendShapeFrameWeight(shapeIndex, lowerFrame);
+            float upperWeight = mesh.GetBlendShapeFrameWeight(shapeIndex, upperFrame);
+            float t = Mathf.Approximately(upperWeight - lowerWeight, 0f)
+                ? 0f
+                : Mathf.InverseLerp(lowerWeight, upperWeight, weight);
+
+            AccumulateInterpolatedBlendShapeFrames(mesh, shapeIndex, lowerFrame, upperFrame, t,
+                frameVertices, frameNormals, frameTangents, deformedVertices, deformedNormals, deformedTangents);
+        }
+
+        private static void AccumulateBlendShapeFrame(
+            Mesh mesh,
+            int shapeIndex,
+            int frameIndex,
+            float factor,
+            Vector3[] frameVertices,
+            Vector3[] frameNormals,
+            Vector3[] frameTangents,
+            Vector3[] deformedVertices,
+            Vector3[] deformedNormals,
+            Vector4[] deformedTangents)
+        {
+            if (Mathf.Approximately(factor, 0f)) return;
+
+            Array.Clear(frameVertices, 0, frameVertices.Length);
+            Array.Clear(frameNormals, 0, frameNormals.Length);
+            Array.Clear(frameTangents, 0, frameTangents.Length);
+            mesh.GetBlendShapeFrameVertices(shapeIndex, frameIndex, frameVertices, frameNormals, frameTangents);
+
+            for (int i = 0; i < deformedVertices.Length; i++)
+            {
+                deformedVertices[i] += frameVertices[i] * factor;
+                if (deformedNormals != null)
+                    deformedNormals[i] += frameNormals[i] * factor;
+                if (deformedTangents != null)
+                {
+                    var tangentDelta = frameTangents[i] * factor;
+                    deformedTangents[i].x += tangentDelta.x;
+                    deformedTangents[i].y += tangentDelta.y;
+                    deformedTangents[i].z += tangentDelta.z;
+                }
+            }
+        }
+
+        private static void AccumulateInterpolatedBlendShapeFrames(
+            Mesh mesh,
+            int shapeIndex,
+            int lowerFrameIndex,
+            int upperFrameIndex,
+            float t,
+            Vector3[] frameVertices,
+            Vector3[] frameNormals,
+            Vector3[] frameTangents,
+            Vector3[] deformedVertices,
+            Vector3[] deformedNormals,
+            Vector4[] deformedTangents)
+        {
+            var lowerVertices = new Vector3[frameVertices.Length];
+            var lowerNormals = new Vector3[frameNormals.Length];
+            var lowerTangents = new Vector3[frameTangents.Length];
+            mesh.GetBlendShapeFrameVertices(shapeIndex, lowerFrameIndex, lowerVertices, lowerNormals, lowerTangents);
+
+            Array.Clear(frameVertices, 0, frameVertices.Length);
+            Array.Clear(frameNormals, 0, frameNormals.Length);
+            Array.Clear(frameTangents, 0, frameTangents.Length);
+            mesh.GetBlendShapeFrameVertices(shapeIndex, upperFrameIndex, frameVertices, frameNormals, frameTangents);
+
+            for (int i = 0; i < deformedVertices.Length; i++)
+            {
+                deformedVertices[i] += Vector3.LerpUnclamped(lowerVertices[i], frameVertices[i], t);
+                if (deformedNormals != null)
+                    deformedNormals[i] += Vector3.LerpUnclamped(lowerNormals[i], frameNormals[i], t);
+                if (deformedTangents != null)
+                {
+                    var tangentDelta = Vector3.LerpUnclamped(lowerTangents[i], frameTangents[i], t);
+                    deformedTangents[i].x += tangentDelta.x;
+                    deformedTangents[i].y += tangentDelta.y;
+                    deformedTangents[i].z += tangentDelta.z;
+                }
+            }
         }
 
         /// <summary>

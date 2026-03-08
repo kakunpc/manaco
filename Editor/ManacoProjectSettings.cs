@@ -28,6 +28,8 @@ namespace com.kakunvr.manaco.Editor
 
     public static class ManacoProjectSettings
     {
+        internal static ScriptableObject DependencyAsset => ManacoProjectSettingsData.instance;
+
         public static bool UseFastPreview
         {
             get => ManacoProjectSettingsData.instance.UseFastPreview;
