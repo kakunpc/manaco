@@ -66,7 +66,7 @@ namespace com.kakunvr.manaco
             UnityEngine.Object.DestroyImmediate(component);
         }
 
-        public Mesh ApplyEyeSubMesh(
+        internal Mesh ApplyEyeSubMesh(
             Manaco.EyeRegion region,
             SkinnedMeshRenderer smr,
             Material overrideMaterial = null,
