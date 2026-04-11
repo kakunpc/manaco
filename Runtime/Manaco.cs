@@ -95,5 +95,14 @@ namespace com.kakunvr.manaco
 
         [HideInInspector]
         public ManacoPreset appliedSourceAvatarPreset;
+
+        [HideInInspector]
+        public int tutorialPage;
+
+        [HideInInspector]
+        public bool tutorialSkipped;
+
+        [HideInInspector]
+        public bool tutorialCompleted;
     }
 }

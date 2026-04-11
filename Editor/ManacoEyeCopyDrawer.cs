@@ -19,7 +19,8 @@ namespace com.kakunvr.manaco.Editor
             Manaco comp,
             SerializedProperty eyeRegionsProp,
             SerializedProperty element,
-            int index)
+            int index,
+            System.Action<int, bool> openSelector)
         {
             var eyeTypeProp                 = element.FindPropertyRelative("eyeType");
             var rendererProp                = element.FindPropertyRelative("targetRenderer");
@@ -73,8 +74,8 @@ namespace com.kakunvr.manaco.Editor
                 EditorStyles.miniLabel);
             EditorGUI.indentLevel--;
 
-            if (GUILayout.Button(ManacoLocale.T("Button.OpenUVEditor")))
-                ManacoWindow.OpenWith(comp, index);
+            if (GUILayout.Button("UV をインスペクター内で選択"))
+                openSelector?.Invoke(index, false);
 
             EditorGUILayout.Space(6);
 
@@ -90,8 +91,8 @@ namespace com.kakunvr.manaco.Editor
                 EditorStyles.miniLabel);
             EditorGUI.indentLevel--;
 
-            if (GUILayout.Button(ManacoLocale.T("Button.OpenUVEditorSource")))
-                ManacoWindow.OpenForSource(comp, index);
+            if (GUILayout.Button("コピー元 UV をインスペクター内で選択"))
+                openSelector?.Invoke(index, true);
 
             extractResolutionProp.intValue = EditorGUILayout.IntPopup(
                 ManacoLocale.T("Label.ExtractResolution"),
