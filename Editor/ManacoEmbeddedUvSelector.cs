@@ -22,7 +22,6 @@ namespace com.kakunvr.manaco.Editor
         private SkinnedMeshRenderer[] _availableSmrs = System.Array.Empty<SkinnedMeshRenderer>();
         private string[] _smrNames = System.Array.Empty<string>();
         private int _smrIndex;
-
         private Texture2D _previewTexture;
         private Vector2[] _cachedUvs;
         private int[][] _cachedTriangles;
@@ -43,7 +42,6 @@ namespace com.kakunvr.manaco.Editor
         public void DrawLayout(float minHeight = 430f, bool tutorialMode = false)
         {
             s_ActiveSelector = this;
-
             if (_target == null)
             {
                 EditorGUILayout.HelpBox(ManacoLocale.T("Message.OpenFromInspector"), MessageType.Info);
@@ -59,17 +57,24 @@ namespace com.kakunvr.manaco.Editor
                 return;
             }
 
+            var regionProp = regionsProp.GetArrayElementAtIndex(_regionIndex);
             if (tutorialMode)
-                DrawTutorialLayout(regionsProp.GetArrayElementAtIndex(_regionIndex), minHeight);
+                DrawTutorialLayout(regionProp, minHeight);
             else
             {
                 EditorGUILayout.BeginHorizontal(GUILayout.ExpandWidth(true), GUILayout.MinHeight(minHeight));
-                DrawLeftPanel(regionsProp.GetArrayElementAtIndex(_regionIndex), false);
-                DrawRightPanel(regionsProp.GetArrayElementAtIndex(_regionIndex), minHeight, false);
+                DrawLeftPanel(regionProp);
+                DrawRightPanel(regionProp, minHeight, false);
                 EditorGUILayout.EndHorizontal();
             }
 
             _serializedObject.ApplyModifiedProperties();
+        }
+
+        public static void ClearActiveSelector()
+        {
+            s_ActiveSelector = null;
+            SceneView.RepaintAll();
         }
 
         private void DrawTutorialLayout(SerializedProperty regionProp, float minHeight)
@@ -77,7 +82,7 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true), GUILayout.MinHeight(minHeight));
             DrawTutorialFields(regionProp);
             EditorGUILayout.Space(8f);
-            DrawTutorialPreview(regionProp, minHeight);
+            DrawRightPanel(regionProp, minHeight, true);
             EditorGUILayout.Space(8f);
             DrawTutorialIslandList(regionProp);
             EditorGUILayout.EndVertical();
@@ -85,12 +90,12 @@ namespace com.kakunvr.manaco.Editor
 
         private void DrawTutorialFields(SerializedProperty regionProp)
         {
-            var rendererProp = regionProp.FindPropertyRelative(_isSourceMode ? "sourceRenderer" : "targetRenderer");
-            var materialIndexProp = regionProp.FindPropertyRelative(_isSourceMode ? "sourceMaterialIndex" : "materialIndex");
+            var rendererProp = regionProp.FindPropertyRelative(GetRendererPropertyName());
+            var materialIndexProp = regionProp.FindPropertyRelative(GetMaterialIndexPropertyName());
             var currentSmr = rendererProp.objectReferenceValue as SkinnedMeshRenderer;
             RefreshSmrIndex(currentSmr);
 
-            EditorGUILayout.LabelField("レンダラー", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(ManacoLocale.T("Label.Renderer"), EditorStyles.boldLabel);
             if (_availableSmrs.Length > 0)
             {
                 EditorGUI.BeginChangeCheck();
@@ -114,19 +119,16 @@ namespace com.kakunvr.manaco.Editor
 
             currentSmr = rendererProp.objectReferenceValue as SkinnedMeshRenderer;
             int maxSlot = currentSmr != null ? Mathf.Max(0, currentSmr.sharedMaterials.Length - 1) : 0;
-            EditorGUILayout.LabelField("マテリアルスロット", EditorStyles.boldLabel);
+            EditorGUILayout.LabelField(ManacoLocale.T("Label.MaterialSlot"), EditorStyles.boldLabel);
             EditorGUI.BeginChangeCheck();
             EditorGUILayout.BeginHorizontal();
             EditorGUI.BeginDisabledGroup(materialIndexProp.intValue <= 0);
-            if (GUILayout.Button("←", GUILayout.Width(28f)))
+            if (GUILayout.Button("<", GUILayout.Width(28f)))
                 materialIndexProp.intValue = Mathf.Max(0, materialIndexProp.intValue - 1);
             EditorGUI.EndDisabledGroup();
-            materialIndexProp.intValue = Mathf.Clamp(
-                EditorGUILayout.IntField(materialIndexProp.intValue, GUILayout.Width(40f)),
-                0,
-                maxSlot);
+            materialIndexProp.intValue = Mathf.Clamp(EditorGUILayout.IntField(materialIndexProp.intValue, GUILayout.Width(40f)), 0, maxSlot);
             EditorGUI.BeginDisabledGroup(materialIndexProp.intValue >= maxSlot);
-            if (GUILayout.Button("→", GUILayout.Width(28f)))
+            if (GUILayout.Button(">", GUILayout.Width(28f)))
                 materialIndexProp.intValue = Mathf.Min(maxSlot, materialIndexProp.intValue + 1);
             EditorGUI.EndDisabledGroup();
             EditorGUILayout.EndHorizontal();
@@ -137,13 +139,119 @@ namespace com.kakunvr.manaco.Editor
             }
         }
 
-        private void DrawTutorialPreview(SerializedProperty regionProp, float minHeight)
+        private void DrawTutorialIslandList(SerializedProperty regionProp)
         {
+            var uvRegionsProp = regionProp.FindPropertyRelative(GetUvRegionsPropertyName());
+            EditorGUILayout.LabelField(ManacoLocale.T("Tutorial.SelectedUvIslands", uvRegionsProp.arraySize), EditorStyles.boldLabel);
+
+            for (int i = 0; i < uvRegionsProp.arraySize; i++)
+            {
+                EditorGUILayout.BeginHorizontal();
+                DrawIslandColorChip(i);
+                EditorGUILayout.LabelField($"[{i}]", EditorStyles.miniLabel);
+                if (GUILayout.Button(ManacoLocale.T("Button.Delete"), GUILayout.Width(56f)))
+                {
+                    uvRegionsProp.DeleteArrayElementAtIndex(i);
+                    _serializedObject.ApplyModifiedProperties();
+                    RefreshSelectionFromRects();
+                    GUIUtility.ExitGUI();
+                }
+                EditorGUILayout.EndHorizontal();
+            }
+
+            if (uvRegionsProp.arraySize == 0)
+                EditorGUILayout.LabelField($"  {ManacoLocale.T("Message.NotSet")}", EditorStyles.miniLabel);
+        }
+
+        private void DrawLeftPanel(SerializedProperty regionProp)
+        {
+            EditorGUILayout.BeginVertical(GUILayout.Width(260f), GUILayout.ExpandHeight(true));
+            _leftScroll = EditorGUILayout.BeginScrollView(_leftScroll);
+
+            var rendererProp = regionProp.FindPropertyRelative(GetRendererPropertyName());
+            var materialIndexProp = regionProp.FindPropertyRelative(GetMaterialIndexPropertyName());
+            var uvRegionsProp = regionProp.FindPropertyRelative(GetUvRegionsPropertyName());
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            var currentSmr = rendererProp.objectReferenceValue as SkinnedMeshRenderer;
+            RefreshSmrIndex(currentSmr);
+
+            if (_availableSmrs.Length > 0)
+            {
+                EditorGUI.BeginChangeCheck();
+                int newSmrIndex = EditorGUILayout.Popup(ManacoLocale.T("Label.Renderer"), _smrIndex, _smrNames);
+                if (EditorGUI.EndChangeCheck())
+                {
+                    _smrIndex = newSmrIndex;
+                    rendererProp.objectReferenceValue = _availableSmrs[_smrIndex];
+                    materialIndexProp.intValue = 0;
+                    _serializedObject.ApplyModifiedProperties();
+                    RefreshPreviewCache();
+                    GUIUtility.ExitGUI();
+                }
+            }
+            else
+            {
+                EditorGUI.BeginDisabledGroup(true);
+                EditorGUILayout.ObjectField(ManacoLocale.T("Label.Renderer"), currentSmr, typeof(SkinnedMeshRenderer), true);
+                EditorGUI.EndDisabledGroup();
+            }
+
+            int maxSlot = currentSmr != null ? Mathf.Max(0, currentSmr.sharedMaterials.Length - 1) : 0;
+            EditorGUI.BeginChangeCheck();
+            materialIndexProp.intValue = EditorGUILayout.IntSlider(
+                ManacoLocale.T("Label.MaterialSlot"),
+                Mathf.Clamp(materialIndexProp.intValue, 0, maxSlot),
+                0,
+                maxSlot);
+            if (EditorGUI.EndChangeCheck())
+            {
+                _serializedObject.ApplyModifiedProperties();
+                RefreshPreviewCache();
+            }
+
+            if (currentSmr != null && currentSmr.sharedMaterials.Length > 1)
+                EditorGUILayout.HelpBox(ManacoLocale.T("Message.MatSlotHint"), MessageType.Info);
+
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(8f);
+            EditorGUILayout.LabelField(ManacoLocale.T("Message.SelUVIslands", uvRegionsProp.arraySize), EditorStyles.boldLabel);
+            EditorGUILayout.HelpBox(ManacoLocale.T("Message.ClickHint"), MessageType.None);
+
+            for (int i = 0; i < uvRegionsProp.arraySize; i++)
+            {
+                var islandProp = uvRegionsProp.GetArrayElementAtIndex(i).FindPropertyRelative("uvPoints");
+                EditorGUILayout.BeginHorizontal();
+                DrawIslandColorChip(i);
+                EditorGUILayout.LabelField($"[{i}]  {ManacoLocale.T("Message.UVPoints", islandProp.arraySize)}", EditorStyles.miniLabel);
+                if (GUILayout.Button(ManacoLocale.T("Button.Delete"), GUILayout.Width(56f)))
+                {
+                    uvRegionsProp.DeleteArrayElementAtIndex(i);
+                    _serializedObject.ApplyModifiedProperties();
+                    RefreshSelectionFromRects();
+                    GUIUtility.ExitGUI();
+                }
+                EditorGUILayout.EndHorizontal();
+            }
+
+            if (uvRegionsProp.arraySize == 0)
+                EditorGUILayout.LabelField($"  {ManacoLocale.T("Message.NotSet")}", EditorStyles.miniLabel);
+
+            EditorGUILayout.EndScrollView();
+            EditorGUILayout.EndVertical();
+        }
+
+        private void DrawRightPanel(SerializedProperty regionProp, float minHeight, bool tutorialMode)
+        {
+            EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true), GUILayout.MinHeight(minHeight));
+
             var eyeType = (Manaco.EyeType)regionProp.FindPropertyRelative("eyeType").enumValueIndex;
             string eyeTypeName = ManacoLocale.GetEyeTypeName(eyeType);
-            var uvRegionsProp = regionProp.FindPropertyRelative(_isSourceMode ? "sourceEyePolygonRegions" : "eyePolygonRegions");
+            var uvRegionsProp = regionProp.FindPropertyRelative(GetUvRegionsPropertyName());
 
-            EditorGUILayout.LabelField("テクスチャ", EditorStyles.boldLabel);
+            if (tutorialMode)
+                EditorGUILayout.LabelField(ManacoLocale.T("Tutorial.Texture"), EditorStyles.boldLabel);
+
             if (uvRegionsProp.arraySize == 0)
             {
                 string message = _isSourceMode
@@ -156,10 +264,14 @@ namespace com.kakunvr.manaco.Editor
                 GUIContent.none,
                 GUIStyle.none,
                 GUILayout.ExpandWidth(true),
-                GUILayout.MinHeight(Mathf.Max(280f, minHeight - 200f)));
+                GUILayout.MinHeight(tutorialMode ? Mathf.Max(280f, minHeight - 200f) : minHeight - 70f),
+                GUILayout.ExpandHeight(true));
 
             if (panelRect.width <= 10f || panelRect.height <= 10f)
+            {
+                EditorGUILayout.EndVertical();
                 return;
+            }
 
             float margin = 8f;
             float size = Mathf.Min(panelRect.width, panelRect.height) - margin * 2f;
@@ -184,200 +296,13 @@ namespace com.kakunvr.manaco.Editor
                 var hintRect = new Rect(previewRect.x, previewRect.yMax + 4f, previewRect.width, 20f);
                 GUI.Label(hintRect, ManacoLocale.T("Message.ClickHintBottom"), EditorStyles.centeredGreyMiniLabel);
             }
-        }
-
-        private void DrawTutorialIslandList(SerializedProperty regionProp)
-        {
-            var uvRegionsProp = regionProp.FindPropertyRelative(_isSourceMode ? "sourceEyePolygonRegions" : "eyePolygonRegions");
-            EditorGUILayout.LabelField($"選択済みUV Island {uvRegionsProp.arraySize}個", EditorStyles.boldLabel);
-
-            for (int i = 0; i < uvRegionsProp.arraySize; i++)
-            {
-                EditorGUILayout.BeginHorizontal();
-                DrawIslandColorChip(i);
-                EditorGUILayout.LabelField($"[{i}]", EditorStyles.miniLabel);
-                if (GUILayout.Button(ManacoLocale.T("Button.Delete"), GUILayout.Width(56f)))
-                {
-                    uvRegionsProp.DeleteArrayElementAtIndex(i);
-                    _serializedObject.ApplyModifiedProperties();
-                    RefreshSelectionFromRects();
-                    GUIUtility.ExitGUI();
-                }
-                EditorGUILayout.EndHorizontal();
-            }
-
-            if (uvRegionsProp.arraySize == 0)
-                EditorGUILayout.LabelField($"  {ManacoLocale.T("Message.NotSet")}", EditorStyles.miniLabel);
-        }
-
-        private void DrawLeftPanel(SerializedProperty regionProp, bool tutorialMode)
-        {
-            EditorGUILayout.BeginVertical(GUILayout.Width(260f), GUILayout.ExpandHeight(true));
-            _leftScroll = EditorGUILayout.BeginScrollView(_leftScroll);
-
-            var rendererProp = regionProp.FindPropertyRelative(_isSourceMode ? "sourceRenderer" : "targetRenderer");
-            var materialIndexProp = regionProp.FindPropertyRelative(_isSourceMode ? "sourceMaterialIndex" : "materialIndex");
-            var uvRegionsProp = regionProp.FindPropertyRelative(_isSourceMode ? "sourceEyePolygonRegions" : "eyePolygonRegions");
-
-            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
-
-            var currentSmr = rendererProp.objectReferenceValue as SkinnedMeshRenderer;
-            RefreshSmrIndex(currentSmr);
-
-            if (_availableSmrs.Length > 0)
-            {
-                EditorGUI.BeginChangeCheck();
-                int newSmrIndex = EditorGUILayout.Popup(ManacoLocale.T("Label.Renderer"), _smrIndex, _smrNames);
-                if (EditorGUI.EndChangeCheck())
-                {
-                    _smrIndex = newSmrIndex;
-                    rendererProp.objectReferenceValue = _availableSmrs[_smrIndex];
-                    materialIndexProp.intValue = 0;
-                    _serializedObject.ApplyModifiedProperties();
-                    RefreshPreviewCache();
-                    GUIUtility.ExitGUI();
-                }
-            }
-            else
-            {
-                EditorGUI.BeginDisabledGroup(true);
-                EditorGUILayout.ObjectField(
-                    ManacoLocale.T("Label.Renderer"),
-                    currentSmr,
-                    typeof(SkinnedMeshRenderer),
-                    true);
-                EditorGUI.EndDisabledGroup();
-            }
-
-            int maxSlot = currentSmr != null ? Mathf.Max(0, currentSmr.sharedMaterials.Length - 1) : 0;
-            EditorGUI.BeginChangeCheck();
-            materialIndexProp.intValue = EditorGUILayout.IntSlider(
-                ManacoLocale.T("Label.MaterialSlot"),
-                Mathf.Clamp(materialIndexProp.intValue, 0, maxSlot),
-                0,
-                maxSlot);
-            if (EditorGUI.EndChangeCheck())
-            {
-                _serializedObject.ApplyModifiedProperties();
-                RefreshPreviewCache();
-            }
-
-            if (currentSmr != null && currentSmr.sharedMaterials.Length > 1)
-                EditorGUILayout.HelpBox(ManacoLocale.T("Message.MatSlotHint"), MessageType.Info);
-
-            EditorGUILayout.EndVertical();
-            EditorGUILayout.Space(8f);
-
-            if (tutorialMode)
-            {
-                EditorGUILayout.LabelField("テクスチャ", EditorStyles.boldLabel);
-                if (_previewTexture != null)
-                {
-                    Rect textureRect = GUILayoutUtility.GetRect(220f, 220f, GUILayout.ExpandWidth(true));
-                    GUI.DrawTexture(textureRect, _previewTexture, ScaleMode.ScaleToFit);
-                }
-                else
-                {
-                    EditorGUILayout.HelpBox(ManacoLocale.T("Message.NoTexture"), MessageType.None);
-                }
-
-                EditorGUILayout.Space(8f);
-                EditorGUILayout.LabelField($"選択済みUV Island {uvRegionsProp.arraySize}個", EditorStyles.boldLabel);
-            }
-            else
-            {
-                EditorGUILayout.LabelField(
-                    ManacoLocale.T("Message.SelUVIslands", uvRegionsProp.arraySize),
-                    EditorStyles.boldLabel);
-                EditorGUILayout.HelpBox(ManacoLocale.T("Message.ClickHint"), MessageType.None);
-            }
-
-            for (int i = 0; i < uvRegionsProp.arraySize; i++)
-            {
-                var islandProp = uvRegionsProp.GetArrayElementAtIndex(i).FindPropertyRelative("uvPoints");
-                EditorGUILayout.BeginHorizontal();
-                DrawIslandColorChip(i);
-                if (tutorialMode)
-                    EditorGUILayout.LabelField($"[{i}]", EditorStyles.miniLabel);
-                else
-                    EditorGUILayout.LabelField(
-                        $"[{i}]  {ManacoLocale.T("Message.UVPoints", islandProp.arraySize)}",
-                        EditorStyles.miniLabel);
-                if (GUILayout.Button(ManacoLocale.T("Button.Delete"), GUILayout.Width(56f)))
-                {
-                    uvRegionsProp.DeleteArrayElementAtIndex(i);
-                    _serializedObject.ApplyModifiedProperties();
-                    RefreshSelectionFromRects();
-                    GUIUtility.ExitGUI();
-                }
-                EditorGUILayout.EndHorizontal();
-            }
-
-            if (uvRegionsProp.arraySize == 0)
-                EditorGUILayout.LabelField($"  {ManacoLocale.T("Message.NotSet")}", EditorStyles.miniLabel);
-
-            EditorGUILayout.EndScrollView();
-            EditorGUILayout.EndVertical();
-        }
-
-        private void DrawRightPanel(SerializedProperty regionProp, float minHeight, bool tutorialMode)
-        {
-            EditorGUILayout.BeginVertical(GUILayout.ExpandWidth(true), GUILayout.MinHeight(minHeight));
-
-            var eyeType = (Manaco.EyeType)regionProp.FindPropertyRelative("eyeType").enumValueIndex;
-            string eyeTypeName = ManacoLocale.GetEyeTypeName(eyeType);
-            var uvRegionsProp = regionProp.FindPropertyRelative(_isSourceMode ? "sourceEyePolygonRegions" : "eyePolygonRegions");
-
-            if (uvRegionsProp.arraySize == 0)
-            {
-                string message = _isSourceMode
-                    ? ManacoLocale.T("Tutorial.SelectSourceEyeType", eyeTypeName)
-                    : ManacoLocale.T("Tutorial.SelectEyeType", eyeTypeName);
-                EditorGUILayout.HelpBox(message, MessageType.Info);
-            }
-
-            Rect panelRect = GUILayoutUtility.GetRect(
-                GUIContent.none,
-                GUIStyle.none,
-                GUILayout.ExpandWidth(true),
-                GUILayout.MinHeight(tutorialMode ? minHeight : minHeight - 70f),
-                GUILayout.ExpandHeight(true));
-
-            if (panelRect.width <= 10f || panelRect.height <= 10f)
-            {
-                EditorGUILayout.EndVertical();
-                return;
-            }
-
-            float margin = 8f;
-            float size = Mathf.Min(panelRect.width, panelRect.height) - margin * 2f;
-            Rect previewRect = new Rect(
-                panelRect.x + (panelRect.width - size) * 0.5f,
-                panelRect.y + margin,
-                size,
-                size);
-
-            EditorGUI.DrawRect(previewRect, new Color(0.12f, 0.12f, 0.12f));
-            if (!tutorialMode)
-            {
-                if (_previewTexture != null)
-                    GUI.DrawTexture(previewRect, _previewTexture, ScaleMode.StretchToFill);
-                else
-                    GUI.Label(previewRect, ManacoLocale.T("Message.NoTexture"), EditorStyles.centeredGreyMiniLabel);
-            }
-
-            DrawWireframe(previewRect);
-            DrawIslandOverlays(previewRect);
-            HandlePreviewClick(previewRect);
-
-            if (_cachedUvs != null)
-            {
-                var hintRect = new Rect(previewRect.x, previewRect.yMax + 4f, previewRect.width, 20f);
-                GUI.Label(hintRect, ManacoLocale.T("Message.ClickHintBottom"), EditorStyles.centeredGreyMiniLabel);
-            }
 
             EditorGUILayout.EndVertical();
         }
+
+        private string GetRendererPropertyName() => _isSourceMode ? "sourceRenderer" : "targetRenderer";
+        private string GetMaterialIndexPropertyName() => _isSourceMode ? "sourceMaterialIndex" : "materialIndex";
+        private string GetUvRegionsPropertyName() => _isSourceMode ? "sourceEyePolygonRegions" : "eyePolygonRegions";
 
         private void RefreshSmrList()
         {
@@ -395,21 +320,18 @@ namespace com.kakunvr.manaco.Editor
             {
                 Transform root = _target.transform.root;
                 var descriptor = _target.GetComponentInParent<VRC.SDKBase.VRC_AvatarDescriptor>();
-                if (descriptor != null)
-                    root = descriptor.transform;
+                if (descriptor != null) root = descriptor.transform;
                 else
                 {
                     var animator = _target.GetComponentInParent<Animator>();
-                    if (animator != null)
-                        root = animator.transform;
+                    if (animator != null) root = animator.transform;
                 }
                 smrs = root.GetComponentsInChildren<SkinnedMeshRenderer>(true);
             }
 
             _availableSmrs = smrs;
             _smrNames = new string[smrs.Length];
-            for (int i = 0; i < smrs.Length; i++)
-                _smrNames[i] = smrs[i].name;
+            for (int i = 0; i < smrs.Length; i++) _smrNames[i] = smrs[i].name;
         }
 
         private void RefreshSmrIndex(SkinnedMeshRenderer currentSmr)
@@ -433,13 +355,11 @@ namespace com.kakunvr.manaco.Editor
             _cachedTriangles = null;
             _selectedTriangles.Clear();
 
-            if (_target == null || _regionIndex >= _target.eyeRegions.Count)
-                return;
+            if (_target == null || _regionIndex >= _target.eyeRegions.Count) return;
 
             var region = _target.eyeRegions[_regionIndex];
             var smr = _isSourceMode ? region.sourceRenderer : region.targetRenderer;
-            if (smr == null || smr.sharedMesh == null)
-                return;
+            if (smr == null || smr.sharedMesh == null) return;
 
             int materialIndex = _isSourceMode ? region.sourceMaterialIndex : region.materialIndex;
             materialIndex = Mathf.Clamp(materialIndex, 0, Mathf.Max(0, smr.sharedMaterials.Length - 1));
@@ -460,22 +380,18 @@ namespace com.kakunvr.manaco.Editor
         private void RefreshSelectionFromRects()
         {
             _selectedTriangles.Clear();
-            if (_cachedUvs == null || _cachedTriangles == null || _target == null || _regionIndex >= _target.eyeRegions.Count)
-                return;
+            if (_cachedUvs == null || _cachedTriangles == null || _target == null || _regionIndex >= _target.eyeRegions.Count) return;
 
             var region = _target.eyeRegions[_regionIndex];
             var polygonRegions = _isSourceMode ? region.sourceEyePolygonRegions : region.eyePolygonRegions;
-            if (polygonRegions == null)
-                return;
+            if (polygonRegions == null) return;
 
             foreach (var polygonRegion in polygonRegions)
             {
-                if (polygonRegion.uvPoints == null || polygonRegion.uvPoints.Length == 0)
-                    continue;
+                if (polygonRegion.uvPoints == null || polygonRegion.uvPoints.Length == 0) continue;
 
                 var pointSet = new HashSet<long>();
-                foreach (var point in polygonRegion.uvPoints)
-                    pointSet.Add(QuantizeUv(point));
+                foreach (var point in polygonRegion.uvPoints) pointSet.Add(QuantizeUv(point));
 
                 for (int i = 0; i < _cachedTriangles.Length; i++)
                 {
@@ -483,17 +399,14 @@ namespace com.kakunvr.manaco.Editor
                     if (pointSet.Contains(QuantizeUv(_cachedUvs[tri[0]])) &&
                         pointSet.Contains(QuantizeUv(_cachedUvs[tri[1]])) &&
                         pointSet.Contains(QuantizeUv(_cachedUvs[tri[2]])))
-                    {
                         _selectedTriangles.Add(i);
-                    }
                 }
             }
         }
 
         private void DrawWireframe(Rect previewRect)
         {
-            if (_cachedUvs == null || _cachedTriangles == null)
-                return;
+            if (_cachedUvs == null || _cachedTriangles == null) return;
 
             Handles.BeginGUI();
             Handles.color = new Color(1f, 1f, 1f, 0.15f);
@@ -523,18 +436,15 @@ namespace com.kakunvr.manaco.Editor
 
         private void DrawIslandOverlays(Rect previewRect)
         {
-            if (_target == null || _regionIndex >= _target.eyeRegions.Count)
-                return;
+            if (_target == null || _regionIndex >= _target.eyeRegions.Count) return;
 
             var region = _target.eyeRegions[_regionIndex];
             var polygonRegions = _isSourceMode ? region.sourceEyePolygonRegions : region.eyePolygonRegions;
-            if (polygonRegions == null)
-                return;
+            if (polygonRegions == null) return;
 
             for (int i = 0; i < polygonRegions.Length; i++)
             {
-                if (polygonRegions[i].uvPoints == null || polygonRegions[i].uvPoints.Length == 0)
-                    continue;
+                if (polygonRegions[i].uvPoints == null || polygonRegions[i].uvPoints.Length == 0) continue;
 
                 var color = Color.HSVToRGB((i * 0.618f) % 1f, 0.8f, 1f);
                 var bounds = CalcUvBounds(polygonRegions[i].uvPoints);
@@ -555,22 +465,16 @@ namespace com.kakunvr.manaco.Editor
         private void HandlePreviewClick(Rect previewRect)
         {
             var currentEvent = Event.current;
-            if (currentEvent.type != EventType.MouseDown || !previewRect.Contains(currentEvent.mousePosition))
-                return;
-            if (_cachedUvs == null || _cachedTriangles == null || _target == null || _regionIndex >= _target.eyeRegions.Count)
-                return;
+            if (currentEvent.type != EventType.MouseDown || !previewRect.Contains(currentEvent.mousePosition)) return;
+            if (_cachedUvs == null || _cachedTriangles == null || _target == null || _regionIndex >= _target.eyeRegions.Count) return;
 
-            string regionPropertyName = _isSourceMode ? "sourceEyePolygonRegions" : "eyePolygonRegions";
             Vector2 clickedUv = ScreenToUv(previewRect, currentEvent.mousePosition);
+            var uvRegionsProp = _serializedObject.FindProperty("eyeRegions").GetArrayElementAtIndex(_regionIndex).FindPropertyRelative(GetUvRegionsPropertyName());
 
             if (currentEvent.button == 0)
             {
                 var islandTriangles = FindIslandAt(clickedUv);
-                if (islandTriangles.Count == 0)
-                {
-                    currentEvent.Use();
-                    return;
-                }
+                if (islandTriangles.Count == 0) { currentEvent.Use(); return; }
 
                 var pointSet = new HashSet<long>();
                 var uvPoints = new List<Vector2>();
@@ -579,50 +483,31 @@ namespace com.kakunvr.manaco.Editor
                     foreach (int vertexIndex in _cachedTriangles[triangleIndex])
                     {
                         var uv = _cachedUvs[vertexIndex];
-                        if (pointSet.Add(QuantizeUv(uv)))
-                            uvPoints.Add(uv);
+                        if (pointSet.Add(QuantizeUv(uv))) uvPoints.Add(uv);
                     }
                 }
 
-                var existingRegions = _isSourceMode
-                    ? _target.eyeRegions[_regionIndex].sourceEyePolygonRegions
-                    : _target.eyeRegions[_regionIndex].eyePolygonRegions;
+                var existingRegions = _isSourceMode ? _target.eyeRegions[_regionIndex].sourceEyePolygonRegions : _target.eyeRegions[_regionIndex].eyePolygonRegions;
                 foreach (var existing in existingRegions)
                 {
-                    if (existing.uvPoints == null || existing.uvPoints.Length != uvPoints.Count)
-                        continue;
-
+                    if (existing.uvPoints == null || existing.uvPoints.Length != uvPoints.Count) continue;
                     bool same = true;
                     foreach (var point in existing.uvPoints)
                     {
-                        if (!pointSet.Contains(QuantizeUv(point)))
-                        {
-                            same = false;
-                            break;
-                        }
+                        if (!pointSet.Contains(QuantizeUv(point))) { same = false; break; }
                     }
-
-                    if (same)
-                    {
-                        currentEvent.Use();
-                        return;
-                    }
+                    if (same) { currentEvent.Use(); return; }
                 }
 
                 Undo.RecordObject(_target, "Add Eye UV Island");
-                var uvRegionsProp = _serializedObject.FindProperty("eyeRegions")
-                    .GetArrayElementAtIndex(_regionIndex)
-                    .FindPropertyRelative(regionPropertyName);
                 uvRegionsProp.arraySize++;
-                var newRegionProp = uvRegionsProp.GetArrayElementAtIndex(uvRegionsProp.arraySize - 1)
-                    .FindPropertyRelative("uvPoints");
+                var newRegionProp = uvRegionsProp.GetArrayElementAtIndex(uvRegionsProp.arraySize - 1).FindPropertyRelative("uvPoints");
                 newRegionProp.arraySize = uvPoints.Count;
                 for (int i = 0; i < uvPoints.Count; i++)
                     newRegionProp.GetArrayElementAtIndex(i).vector2Value = uvPoints[i];
 
                 _serializedObject.ApplyModifiedProperties();
-                foreach (int triangleIndex in islandTriangles)
-                    _selectedTriangles.Add(triangleIndex);
+                foreach (int triangleIndex in islandTriangles) _selectedTriangles.Add(triangleIndex);
             }
             else if (currentEvent.button == 1)
             {
@@ -630,34 +515,21 @@ namespace com.kakunvr.manaco.Editor
                 if (nearestTriangle >= 0)
                 {
                     long key = QuantizeUv(_cachedUvs[_cachedTriangles[nearestTriangle][0]]);
-                    var polygonRegions = _isSourceMode
-                        ? _target.eyeRegions[_regionIndex].sourceEyePolygonRegions
-                        : _target.eyeRegions[_regionIndex].eyePolygonRegions;
+                    var polygonRegions = _isSourceMode ? _target.eyeRegions[_regionIndex].sourceEyePolygonRegions : _target.eyeRegions[_regionIndex].eyePolygonRegions;
                     int removeIndex = -1;
                     for (int i = 0; i < polygonRegions.Length; i++)
                     {
-                        if (polygonRegions[i].uvPoints == null)
-                            continue;
-
+                        if (polygonRegions[i].uvPoints == null) continue;
                         foreach (var point in polygonRegions[i].uvPoints)
                         {
-                            if (QuantizeUv(point) == key)
-                            {
-                                removeIndex = i;
-                                break;
-                            }
+                            if (QuantizeUv(point) == key) { removeIndex = i; break; }
                         }
-
-                        if (removeIndex >= 0)
-                            break;
+                        if (removeIndex >= 0) break;
                     }
 
                     if (removeIndex >= 0)
                     {
                         Undo.RecordObject(_target, "Remove Eye UV Island");
-                        var uvRegionsProp = _serializedObject.FindProperty("eyeRegions")
-                            .GetArrayElementAtIndex(_regionIndex)
-                            .FindPropertyRelative(regionPropertyName);
                         uvRegionsProp.DeleteArrayElementAtIndex(removeIndex);
                         _serializedObject.ApplyModifiedProperties();
                         RefreshSelectionFromRects();
@@ -689,7 +561,6 @@ namespace com.kakunvr.manaco.Editor
                     nearestTriangle = i;
                 }
             }
-
             return nearestTriangle;
         }
 
@@ -706,30 +577,22 @@ namespace com.kakunvr.manaco.Editor
                         triangles = new List<int>();
                         uvToTriangles[key] = triangles;
                     }
-
-                    if (!triangles.Contains(i))
-                        triangles.Add(i);
+                    if (!triangles.Contains(i)) triangles.Add(i);
                 }
             }
 
             var visited = new HashSet<int> { startTriangle };
             var queue = new Queue<int>();
             queue.Enqueue(startTriangle);
-
             while (queue.Count > 0)
             {
                 int current = queue.Dequeue();
                 foreach (int vertexIndex in _cachedTriangles[current])
                 {
                     long key = QuantizeUv(_cachedUvs[vertexIndex]);
-                    if (!uvToTriangles.TryGetValue(key, out var neighbors))
-                        continue;
-
+                    if (!uvToTriangles.TryGetValue(key, out var neighbors)) continue;
                     foreach (int neighbor in neighbors)
-                    {
-                        if (visited.Add(neighbor))
-                            queue.Enqueue(neighbor);
-                    }
+                        if (visited.Add(neighbor)) queue.Enqueue(neighbor);
                 }
             }
 
@@ -751,10 +614,7 @@ namespace com.kakunvr.manaco.Editor
 
         private static Rect CalcUvBounds(Vector2[] points)
         {
-            float minX = float.MaxValue;
-            float minY = float.MaxValue;
-            float maxX = float.MinValue;
-            float maxY = float.MinValue;
+            float minX = float.MaxValue, minY = float.MaxValue, maxX = float.MinValue, maxY = float.MinValue;
             foreach (var uv in points)
             {
                 minX = Mathf.Min(minX, uv.x);
@@ -762,27 +622,17 @@ namespace com.kakunvr.manaco.Editor
                 maxX = Mathf.Max(maxX, uv.x);
                 maxY = Mathf.Max(maxY, uv.y);
             }
-
             return Rect.MinMaxRect(minX, minY, maxX, maxY);
         }
 
         private static Vector3 UvToScreen(Rect rect, Vector2 uv) =>
             new Vector3(rect.x + uv.x * rect.width, rect.y + (1f - uv.y) * rect.height, 0f);
-
         private static Vector2 ScreenToUv(Rect rect, Vector2 position) =>
             new Vector2((position.x - rect.x) / rect.width, 1f - (position.y - rect.y) / rect.height);
 
-        public static void ClearActiveSelector()
-        {
-            s_ActiveSelector = null;
-            SceneView.RepaintAll();
-        }
-
         private static void EnsureSceneHooks()
         {
-            if (s_SceneHooksInitialized)
-                return;
-
+            if (s_SceneHooksInitialized) return;
             SceneView.duringSceneGui += OnSceneGuiStatic;
             EditorApplication.update += OnEditorUpdateStatic;
             s_SceneHooksInitialized = true;
@@ -790,60 +640,41 @@ namespace com.kakunvr.manaco.Editor
 
         private static void OnEditorUpdateStatic()
         {
-            if (s_ActiveSelector == null || s_ActiveSelector._selectedTriangles == null || s_ActiveSelector._selectedTriangles.Count == 0)
-                return;
-
+            if (s_ActiveSelector == null || s_ActiveSelector._selectedTriangles.Count == 0) return;
             double now = EditorApplication.timeSinceStartup;
-            if (now - s_LastSceneRepaintTime < 1.0 / 30.0)
-                return;
-
+            if (now - s_LastSceneRepaintTime < 1.0 / 30.0) return;
             s_LastSceneRepaintTime = now;
             SceneView.RepaintAll();
         }
 
-        private static void OnSceneGuiStatic(SceneView _)
-        {
-            s_ActiveSelector?.DrawSceneSelection();
-        }
+        private static void OnSceneGuiStatic(SceneView _) => s_ActiveSelector?.DrawSceneSelection();
 
         private void DrawSceneSelection()
         {
-            if (_target == null || _regionIndex < 0 || _regionIndex >= _target.eyeRegions.Count)
-                return;
-            if (_cachedTriangles == null || _selectedTriangles == null || _selectedTriangles.Count == 0)
-                return;
+            if (_target == null || _regionIndex < 0 || _regionIndex >= _target.eyeRegions.Count) return;
+            if (_cachedTriangles == null || _selectedTriangles.Count == 0) return;
 
             var region = _target.eyeRegions[_regionIndex];
             var smr = _isSourceMode ? region.sourceRenderer : region.targetRenderer;
-            if (smr == null || smr.sharedMesh == null)
-                return;
+            if (smr == null || smr.sharedMesh == null) return;
 
             var verts = smr.sharedMesh.vertices;
             var tf = smr.transform;
             float pulse = 0.5f + 0.5f * Mathf.Sin((float)(EditorApplication.timeSinceStartup * ScenePulseSpeed * Mathf.PI * 2.0));
-
-            var fillColor = SceneFillBase;
-            fillColor.a = Mathf.Lerp(0.05f, 0.35f, pulse);
-
-            var borderColor = SceneBorderBase;
-            borderColor.a = Mathf.Lerp(0.50f, 1.00f, pulse);
+            var fillColor = SceneFillBase; fillColor.a = Mathf.Lerp(0.05f, 0.35f, pulse);
+            var borderColor = SceneBorderBase; borderColor.a = Mathf.Lerp(0.50f, 1.00f, pulse);
 
             foreach (int triIdx in _selectedTriangles)
             {
-                if (triIdx >= _cachedTriangles.Length)
-                    continue;
-
+                if (triIdx >= _cachedTriangles.Length) continue;
                 var tri = _cachedTriangles[triIdx];
-                if (tri[0] >= verts.Length || tri[1] >= verts.Length || tri[2] >= verts.Length)
-                    continue;
+                if (tri[0] >= verts.Length || tri[1] >= verts.Length || tri[2] >= verts.Length) continue;
 
                 var p0 = tf.TransformPoint(verts[tri[0]]);
                 var p1 = tf.TransformPoint(verts[tri[1]]);
                 var p2 = tf.TransformPoint(verts[tri[2]]);
-
                 Handles.color = fillColor;
                 Handles.DrawAAConvexPolygon(p0, p1, p2);
-
                 Handles.color = borderColor;
                 Handles.DrawAAPolyLine(ScenePolylineWidth, p0, p1, p2, p0);
             }
