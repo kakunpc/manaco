@@ -105,8 +105,7 @@ namespace com.kakunvr.manaco.Editor
             _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, ManacoLocale.T("Label.AdvancedSettings"), true, EditorStyles.foldoutHeader);
             if (_showAdvanced)
                 DrawAdvanced(comp);
-
-            DrawExpandedSelector(comp);
+            _expandedRegionIndex = -1;
         }
 
         private void DrawAdvanced(Manaco comp)
@@ -354,7 +353,7 @@ namespace com.kakunvr.manaco.Editor
                     if (!any) { EditorGUILayout.Space(4f); any = true; }
                     EditorGUILayout.HelpBox(ManacoLocale.T("Tutorial.SelectEyeType", eyeTypeName), MessageType.Info);
                     if (GUILayout.Button(ManacoLocale.T("Tutorial.SelectEyeButton", eyeTypeName)))
-                        OnOpenRegionSelector(i, false);
+                        ManacoWindow.OpenWith(comp, i);
                 }
 
                 if (showSrc && comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar &&
@@ -363,7 +362,7 @@ namespace com.kakunvr.manaco.Editor
                     if (!any) { EditorGUILayout.Space(4f); any = true; }
                     EditorGUILayout.HelpBox(ManacoLocale.T("Tutorial.SelectSourceEyeType", eyeTypeName), MessageType.Info);
                     if (GUILayout.Button(ManacoLocale.T("Tutorial.SelectSourceEyeButton", eyeTypeName)))
-                        OnOpenRegionSelector(i, true);
+                        ManacoWindow.OpenForSource(comp, i);
                 }
             }
         }
