@@ -51,6 +51,8 @@ namespace com.kakunvr.manaco.Editor
             var comp = (Manaco)target;
             _tutorialPageProp.intValue = Mathf.Clamp(_tutorialPageProp.intValue, 0, Mathf.Max(0, GetLastTutorialPage(comp)));
 
+            DrawVersionNotice();
+
             if (!comp.tutorialSkipped && !comp.tutorialCompleted)
                 DrawTutorialInspector(comp);
             else
@@ -83,6 +85,22 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.EndVertical();
         }
 
+        private void DrawVersionNotice()
+        {
+            if (!ManacoVersionChecker.HasUpdate(out var latestVersion))
+                return;
+
+            EditorGUILayout.BeginVertical(EditorStyles.helpBox);
+            EditorGUILayout.HelpBox(ManacoLocale.T("Version.UpdateAvailable", latestVersion), MessageType.Info);
+            if (!string.IsNullOrEmpty(ManacoVersionChecker.ReleaseUrl) &&
+                GUILayout.Button(ManacoLocale.T("Version.OpenRelease"), GUILayout.Width(180f)))
+            {
+                Application.OpenURL(ManacoVersionChecker.ReleaseUrl);
+            }
+            EditorGUILayout.EndVertical();
+            EditorGUILayout.Space(6f);
+        }
+
         private void DrawStandardInspector(Manaco comp)
         {
             DrawModeField();
@@ -110,6 +128,11 @@ namespace com.kakunvr.manaco.Editor
 
         private void DrawAdvanced(Manaco comp)
         {
+            if (GUILayout.Button(ManacoLocale.T("Version.CheckNow")))
+                ManacoVersionChecker.CheckNow();
+
+            EditorGUILayout.Space(6f);
+
             if (GUILayout.Button(ManacoLocale.T("Tutorial.Restart")))
             {
                 _tutorialPageProp.intValue = 0;

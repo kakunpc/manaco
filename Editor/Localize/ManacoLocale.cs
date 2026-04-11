@@ -169,6 +169,9 @@ namespace com.kakunvr.manaco.Editor
             ["Tutorial.Texture"] = "テクスチャ",
             ["Tutorial.SelectedUvIslands"] = "選択済みUV Island {0}個",
             ["Tutorial.FinalPreviewDescription"] = "NDMFプレビュー設定を確認して完了してください。",
+            ["Version.UpdateAvailable"] = "バージョンアップがあります v{0}",
+            ["Version.OpenRelease"] = "リリースページを開く",
+            ["Version.CheckNow"] = "アップデートを確認",
         };
 
         private static readonly Dictionary<string, string> _enAdditionalSupplemental = new Dictionary<string, string>
@@ -179,6 +182,9 @@ namespace com.kakunvr.manaco.Editor
             ["Tutorial.Texture"] = "Texture",
             ["Tutorial.SelectedUvIslands"] = "Selected UV Islands: {0}",
             ["Tutorial.FinalPreviewDescription"] = "Review the NDMF preview settings, then finish.",
+            ["Version.UpdateAvailable"] = "An update is available: v{0}",
+            ["Version.OpenRelease"] = "Open Release Page",
+            ["Version.CheckNow"] = "Check for Updates",
         };
 
         private static readonly Dictionary<string, ManacoLocaleData> _locales =

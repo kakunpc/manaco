@@ -18,11 +18,15 @@ jobs:
         id: vars
         run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Update version in package.json
+      - name: Validate package version
         env:
           VERSION: ${{ steps.vars.outputs.version }}
         run: |
-          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" package.json
+          PACKAGE_VERSION=$(node -p "require('./package.json').version")
+          if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
+            echo "package.json version ($PACKAGE_VERSION) does not match tag ($VERSION)"
+            exit 1
+          fi
 
       - name: Create VCC ZIP
         env:
@@ -38,3 +42,21 @@ jobs:
         with:
           files: com.kakunvr.manaco-${{ steps.vars.outputs.version }}.zip
           generate_release_notes: true
+
+      - name: Update latest.json on main
+        env:
+          VERSION: ${{ steps.vars.outputs.version }}
+        run: |
+          git fetch origin main
+          git checkout main
+          cat > latest.json <<EOF
+          {
+            "version": "${VERSION}",
+            "url": "https://github.com/${GITHUB_REPOSITORY}/releases/tag/${VERSION}"
+          }
+          EOF
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add latest.json
+          git diff --cached --quiet || git commit -m "Update latest.json for ${VERSION}"
+          git push origin main
