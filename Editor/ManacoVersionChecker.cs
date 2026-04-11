@@ -11,7 +11,7 @@ namespace com.kakunvr.manaco.Editor
     [InitializeOnLoad]
     internal static class ManacoVersionChecker
     {
-        private const string LatestUrl = "https://raw.githubusercontent.com/kakunpc/manaco/main/latest.json";
+        private const string LatestUrl = "https://raw.githubusercontent.com/kakunpc/manaco/versions/latest.json";
         private const string CheckedKey = "com.kakunvr.manaco.version.checked";
         private const string LatestVersionKey = "com.kakunvr.manaco.version.latest";
         private const string ReleaseUrlKey = "com.kakunvr.manaco.version.releaseUrl";

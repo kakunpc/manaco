@@ -18,15 +18,11 @@ jobs:
         id: vars
         run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
-      - name: Validate package version
+      - name: Update package.json version
         env:
           VERSION: ${{ steps.vars.outputs.version }}
         run: |
-          PACKAGE_VERSION=$(node -p "require('./package.json').version")
-          if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
-            echo "package.json version ($PACKAGE_VERSION) does not match tag ($VERSION)"
-            exit 1
-          fi
+          node -e "const fs=require('fs'); const path='package.json'; const data=JSON.parse(fs.readFileSync(path,'utf8')); data.version=process.env.VERSION; fs.writeFileSync(path, JSON.stringify(data, null, 2)+'\n');"
 
       - name: Create VCC ZIP
         env:
@@ -47,8 +43,13 @@ jobs:
         env:
           VERSION: ${{ steps.vars.outputs.version }}
         run: |
-          git fetch origin main
-          git checkout main
+          git fetch origin versions || true
+          if git show-ref --verify --quiet refs/remotes/origin/versions; then
+            git checkout -B versions origin/versions
+          else
+            git checkout --orphan versions
+            git rm -rf . || true
+          fi
           cat > latest.json <<EOF
           {
             "version": "${VERSION}",
@@ -59,4 +60,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add latest.json
           git diff --cached --quiet || git commit -m "Update latest.json for ${VERSION}"
-          git push origin main
+          git push origin versions
