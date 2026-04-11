@@ -137,6 +137,7 @@ namespace com.kakunvr.manaco.Editor
             ["Tutorial.DestinationPresetDescription"] = "Select the target avatar preset.",
             ["Tutorial.MaterialDescription"] = "Select the custom material you want to use.",
             ["Tutorial.SourceSetupDescription"] = "Select the source avatar and source preset.",
+            ["Tutorial.FinalPreviewDescription"] = "Review the preview settings, then finish the tutorial.",
             ["Tutorial.SelectPresetFirst"] = "Select a preset first.",
             ["Tutorial.IslandDescription"] = "Select the island for {0}.",
             ["Tutorial.SourceIslandDescription"] = "Select the source island for {0}.",
@@ -162,14 +163,22 @@ namespace com.kakunvr.manaco.Editor
 
         private static readonly Dictionary<string, string> _jaAdditionalSupplemental = new Dictionary<string, string>
         {
+            ["Label.DestinationPreset"] = "アバタープリセット（コピー先）",
+            ["Label.SourceAvatar"] = "コピー元のアバター",
+            ["Label.SourcePreset"] = "コピー元のアバタープリセット",
             ["Tutorial.Texture"] = "テクスチャ",
             ["Tutorial.SelectedUvIslands"] = "選択済みUV Island {0}個",
+            ["Tutorial.FinalPreviewDescription"] = "NDMFプレビュー設定を確認して完了してください。",
         };
 
         private static readonly Dictionary<string, string> _enAdditionalSupplemental = new Dictionary<string, string>
         {
+            ["Label.DestinationPreset"] = "Avatar Preset (Destination)",
+            ["Label.SourceAvatar"] = "Source Avatar",
+            ["Label.SourcePreset"] = "Source Avatar Preset",
             ["Tutorial.Texture"] = "Texture",
             ["Tutorial.SelectedUvIslands"] = "Selected UV Islands: {0}",
+            ["Tutorial.FinalPreviewDescription"] = "Review the NDMF preview settings, then finish.",
         };
 
         private static readonly Dictionary<string, ManacoLocaleData> _locales =

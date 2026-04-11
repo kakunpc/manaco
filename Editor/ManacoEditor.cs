@@ -397,6 +397,10 @@ namespace com.kakunvr.manaco.Editor
                 case TutorialStepKind.SourceIsland:
                     DrawTutorialIslandStep(comp, step.RegionIndex, true);
                     break;
+                case TutorialStepKind.FinalPreview:
+                    EditorGUILayout.HelpBox(ManacoLocale.T("Tutorial.FinalPreviewDescription"), MessageType.Info);
+                    DrawPreviewSettingsOnly();
+                    break;
             }
         }
 
@@ -446,6 +450,18 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.Space(8f);
             EditorGUILayout.LabelField(ManacoLocale.T("Label.SourcePreset"), EditorStyles.boldLabel);
             DrawPresetSelector(comp, true);
+        }
+
+        private void DrawPreviewSettingsOnly()
+        {
+            EditorGUILayout.PropertyField(_useNdmfPreviewProp, new GUIContent(ManacoLocale.T("Toggle.NdmfPreview")));
+            EditorGUI.BeginChangeCheck();
+            bool useFastPreview = EditorGUILayout.Toggle(ManacoLocale.T("Toggle.FastPreview"), ManacoProjectSettings.UseFastPreview);
+            if (EditorGUI.EndChangeCheck())
+                ManacoProjectSettings.UseFastPreview = useFastPreview;
+
+            if (ManacoProjectSettings.UseFastPreview)
+                EditorGUILayout.HelpBox(ManacoLocale.T("Message.FastPreviewWarning"), MessageType.Warning);
         }
 
         private void DrawTutorialIslandStep(Manaco comp, int regionIndex, bool isSource)
@@ -536,6 +552,8 @@ namespace com.kakunvr.manaco.Editor
                     return true;
                 case TutorialStepKind.SourceIsland:
                     return ConfirmIfIslandMissing(comp, step.RegionIndex, true);
+                case TutorialStepKind.FinalPreview:
+                    return true;
                 default:
                     return true;
             }
@@ -624,8 +642,10 @@ namespace com.kakunvr.manaco.Editor
                 if (pageIndex == currentPage)
                     return new TutorialStep(TutorialStepKind.SourceIsland, pageIndex, i);
             }
+            if (pageIndex == currentPage)
+                return new TutorialStep(TutorialStepKind.FinalPreview, pageIndex);
 
-            return new TutorialStep(TutorialStepKind.SourceIsland, Mathf.Max(0, currentPage - 1), Mathf.Max(0, regionCount - 1));
+            return new TutorialStep(TutorialStepKind.FinalPreview, currentPage);
         }
 
         private void LoadPresets()
@@ -846,6 +866,7 @@ namespace com.kakunvr.manaco.Editor
             MaterialSetup,
             SourceSetup,
             SourceIsland,
+            FinalPreview,
         }
     }
 }
