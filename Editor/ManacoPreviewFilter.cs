@@ -10,6 +10,16 @@ namespace com.kakunvr.manaco.Editor
 {
     public class ManacoPreviewFilter : IRenderFilter
     {
+        private static int GetLightweightPriority(Manaco.EyeRegion region)
+        {
+            return region.eyeType switch
+            {
+                Manaco.EyeType.LeftPupil => 1,
+                Manaco.EyeType.RightPupil => 1,
+                _ => 0,
+            };
+        }
+
         public ImmutableList<RenderGroup> GetTargetGroups(ComputeContext context)
         {
             context.Observe(ManacoProjectSettings.DependencyAsset);
@@ -23,7 +33,7 @@ namespace com.kakunvr.manaco.Editor
                 context.Observe(comp);
                 if (!comp.useNdmfPreview) continue;
 
-                foreach (var region in comp.eyeRegions)
+                foreach (var region in comp.eyeRegions.OrderBy(GetLightweightPriority))
                 {
                     if (region.targetRenderer == null) continue;
                     if (region.eyePolygonRegions == null || region.eyePolygonRegions.Length == 0) continue;
@@ -326,7 +336,7 @@ namespace com.kakunvr.manaco.Editor
             proxySmr.sharedMaterials = modification.OriginalMaterials;
 
             var materialCache = new Dictionary<(SkinnedMeshRenderer renderer, int materialIndex), Material>();
-            foreach (var assignment in modification.Assignments)
+            foreach (var assignment in modification.Assignments.OrderBy(a => GetLightweightPriority(a.Region)))
             {
                 ManacoLightweightUtility.ApplyLightweightMaterial(
                     assignment.Region,
@@ -338,6 +348,16 @@ namespace com.kakunvr.manaco.Editor
 
             modification.CurrentPreviewMesh = modification.OriginalMesh;
             modification.CurrentPreviewMaterials = proxySmr.sharedMaterials;
+        }
+
+        private static int GetLightweightPriority(Manaco.EyeRegion region)
+        {
+            return region.eyeType switch
+            {
+                Manaco.EyeType.LeftPupil => 1,
+                Manaco.EyeType.RightPupil => 1,
+                _ => 0,
+            };
         }
 
         private static bool HaveBlendShapeWeightsChanged(

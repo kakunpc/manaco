@@ -34,7 +34,7 @@ namespace com.kakunvr.manaco
             var fallbackMaterialCache = new Dictionary<(Material material, int resolution, bool forceRender), Material>();
             var lightweightMaterialCache = new Dictionary<(SkinnedMeshRenderer renderer, int materialIndex), Material>();
 
-            foreach (var region in component.eyeRegions)
+            foreach (var region in component.eyeRegions.OrderBy(GetLightweightPriority))
             {
                 if (region.targetRenderer == null)
                 {
@@ -81,6 +81,16 @@ namespace com.kakunvr.manaco
             UnityEngine.Object.DestroyImmediate(component);
         }
 
+        private static int GetLightweightPriority(Manaco.EyeRegion region)
+        {
+            return region.eyeType switch
+            {
+                Manaco.EyeType.LeftPupil => 1,
+                Manaco.EyeType.RightPupil => 1,
+                _ => 0,
+            };
+        }
+
         internal static Material ResolveEyeMaterial(
             Manaco.EyeRegion region,
             Manaco component,
@@ -100,7 +110,9 @@ namespace com.kakunvr.manaco
             var key = (eyeMaterial, resolution, forceRender);
             if (!fallbackMaterialCache.TryGetValue(key, out var cachedMaterial))
             {
-                cachedMaterial = BakeFallbackTexture(eyeMaterial, resolution, forceRender);
+                cachedMaterial = forceRender
+                    ? CreateRenderedTextureMaterial(eyeMaterial, resolution)
+                    : BakeFallbackTexture(eyeMaterial, resolution, false);
                 fallbackMaterialCache[key] = cachedMaterial;
             }
 
@@ -574,6 +586,30 @@ namespace com.kakunvr.manaco
             // Debug.Log($"[Manaco] {sourceMaterial.name} のフォールバックテクスチャをベイクしました ({res}x{res})");
 
             return clonedMaterial;
+        }
+
+        private static Material CreateRenderedTextureMaterial(Material sourceMaterial, int resolution)
+        {
+            if (sourceMaterial == null) return null;
+
+            int res = Mathf.Clamp(resolution, 64, 2048);
+            var renderedTexture = RenderMaterialToTexture(sourceMaterial, res, sourceMaterial.name + "_Rendered");
+            if (renderedTexture == null)
+                return null;
+
+            var shader = Shader.Find("Unlit/Transparent") ?? Shader.Find("Unlit/Texture");
+            if (shader == null)
+            {
+                UnityEngine.Object.DestroyImmediate(renderedTexture);
+                return null;
+            }
+
+            var renderedMaterial = new Material(shader)
+            {
+                name = sourceMaterial.name + "_RenderedMaterial"
+            };
+            renderedMaterial.SetTexture("_MainTex", renderedTexture);
+            return renderedMaterial;
         }
 
         private static Texture2D RenderMaterialToTexture(Material sourceMaterial, int resolution, string textureName)

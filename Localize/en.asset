@@ -64,11 +64,10 @@ MonoBehaviour:
   - key: Label.LightweightResolution
     value: Lightweight Resolution
   - key: Tooltip.LightweightMode
-    value: Bake the eye appearance into the face texture without adding a new material
-      slot.
+    value: Write the eye appearance directly into the face texture.
   - key: Message.LightweightModeWarning
-    value: Lightweight Mode bakes the eye appearance into the face texture. It avoids
-      extra material slots, but custom shader behavior is not preserved.
+    value: This mode writes the eye appearance directly into the face texture. It
+      does not add material slots, but custom shader effects are not preserved.
   - key: Toggle.FastPreview
     value: Fast Preview
   - key: Message.FastPreviewWarning
