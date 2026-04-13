@@ -31,6 +31,8 @@ namespace com.kakunvr.manaco
 
         private void ProcessComponent(Manaco component)
         {
+            var fallbackMaterialCache = new Dictionary<(Material material, int resolution), Material>();
+
             foreach (var region in component.eyeRegions)
             {
                 if (region.targetRenderer == null)
@@ -61,9 +63,28 @@ namespace com.kakunvr.manaco
                     continue;
                 }
 
-                ApplyEyeSubMesh(region, region.targetRenderer);
+                var eyeMaterial = ResolveEyeMaterial(region, fallbackMaterialCache);
+                ApplyEyeSubMesh(region, region.targetRenderer, eyeMaterial);
             }
             UnityEngine.Object.DestroyImmediate(component);
+        }
+
+        private static Material ResolveEyeMaterial(
+            Manaco.EyeRegion region,
+            Dictionary<(Material material, int resolution), Material> fallbackMaterialCache)
+        {
+            var eyeMaterial = region.customMaterial;
+            if (!region.bakeFallbackTexture || eyeMaterial == null)
+                return eyeMaterial;
+
+            var key = (eyeMaterial, region.fallbackTextureResolution);
+            if (!fallbackMaterialCache.TryGetValue(key, out var cachedMaterial))
+            {
+                cachedMaterial = BakeFallbackTexture(eyeMaterial, region.fallbackTextureResolution);
+                fallbackMaterialCache[key] = cachedMaterial;
+            }
+
+            return cachedMaterial;
         }
 
         internal Mesh ApplyEyeSubMesh(
@@ -300,20 +321,28 @@ namespace com.kakunvr.manaco
             }
 
             // ---- SubMeshを再構築 ----
-            mesh.subMeshCount = subMeshCount + 1;
+            mesh.subMeshCount = subMeshCount;
             for (int s = 0; s < subMeshCount; s++)
                 mesh.SetTriangles(allTrianglesBySubMesh[s], s);
-            mesh.SetTriangles(eyeTriangles, subMeshCount);
 
             mesh.RecalculateBounds();
 
             // 新SubMeshにカスタムマテリアルを割り当て（override が渡された場合はそちらを優先）
             var eyeMaterial = overrideMaterial ?? region.customMaterial;
-            if (region.bakeFallbackTexture)
-                eyeMaterial = BakeFallbackTexture(eyeMaterial, region.fallbackTextureResolution);
-
             var materials = smr.sharedMaterials.ToList();
-            materials.Add(eyeMaterial);
+            int materialSlot = materials.FindIndex(mat => mat == eyeMaterial);
+            if (materialSlot >= 0)
+            {
+                allTrianglesBySubMesh[materialSlot].AddRange(eyeTriangles);
+                mesh.SetTriangles(allTrianglesBySubMesh[materialSlot], materialSlot);
+            }
+            else
+            {
+                materialSlot = subMeshCount;
+                mesh.subMeshCount = subMeshCount + 1;
+                mesh.SetTriangles(eyeTriangles, materialSlot);
+                materials.Add(eyeMaterial);
+            }
             smr.sharedMesh = mesh;
             smr.sharedMaterials = materials.ToArray();
 
