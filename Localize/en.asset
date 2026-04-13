@@ -59,6 +59,16 @@ MonoBehaviour:
     value: Open UV Editor
   - key: Toggle.NdmfPreview
     value: Enable NDMF Preview
+  - key: Toggle.LightweightMode
+    value: Lightweight Mode
+  - key: Label.LightweightResolution
+    value: Lightweight Resolution
+  - key: Tooltip.LightweightMode
+    value: Bake the eye appearance into the face texture without adding a new material
+      slot.
+  - key: Message.LightweightModeWarning
+    value: Lightweight Mode bakes the eye appearance into the face texture. It avoids
+      extra material slots, but custom shader behavior is not preserved.
   - key: Toggle.FastPreview
     value: Fast Preview
   - key: Message.FastPreviewWarning

@@ -97,6 +97,8 @@ namespace com.kakunvr.manaco.Editor
                         if (region.customMaterial != null)
                             context.Observe(region.customMaterial);
                     }
+
+                    context.Observe(region.targetRenderer);
                 }
             }
 
@@ -115,16 +117,19 @@ namespace com.kakunvr.manaco.Editor
             public Mesh OriginalMesh;
             public Material[] OriginalMaterials;
             public Material[] CurrentPreviewMaterials;
-            public Manaco.EyeRegion Region;
-            public Material EyeMaterial;
+            public readonly List<(Manaco.EyeRegion Region, Material EyeMaterial)> Assignments = new();
             public bool UseFastPreview;
+            public bool UseLightweightMode;
             public Mesh CurrentPreviewMesh;
             public float[] LastBlendShapeWeights;
         }
 
         private readonly List<Mesh> _createdMeshes = new List<Mesh>();
+        private readonly List<UnityEngine.Object> _createdObjects = new List<UnityEngine.Object>();
         private readonly Dictionary<Renderer, RendererModification> _rendererModifications
             = new Dictionary<Renderer, RendererModification>();
+        private readonly Dictionary<(Material material, int resolution, bool forceRender), Material> _fallbackMaterialCache
+            = new Dictionary<(Material material, int resolution, bool forceRender), Material>();
         private readonly ManacoPass _pass;
 
         public ManacoPreviewNode(
@@ -151,6 +156,7 @@ namespace com.kakunvr.manaco.Editor
                         if (region.sourceEyePolygonRegions == null || region.sourceEyePolygonRegions.Length == 0) continue;
                         eyeMat = ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
                         if (eyeMat == null) continue;
+                        region.customMaterial = eyeMat;
                     }
                     else // EyeMaterialAssignment
                     {
@@ -158,25 +164,48 @@ namespace com.kakunvr.manaco.Editor
                         eyeMat = region.customMaterial;
                     }
 
+                    eyeMat = ManacoPass.ResolveEyeMaterial(region, comp, _fallbackMaterialCache);
+                    if (eyeMat == null) continue;
+
                     if (region.targetRenderer is not SkinnedMeshRenderer originalSmr) continue;
                     if (!proxyMap.TryGetValue(region.targetRenderer, out var proxyRenderer)) continue;
                     if (proxyRenderer is not SkinnedMeshRenderer proxySmr) continue;
 
-                    var modification = new RendererModification
+                    if (!_rendererModifications.TryGetValue(region.targetRenderer, out var modification))
                     {
-                        OriginalMesh = proxySmr.sharedMesh,
-                        OriginalMaterials = proxySmr.sharedMaterials,
-                        Region = region,
-                        EyeMaterial = eyeMat,
-                        UseFastPreview = useFastPreview,
-                    };
+                        modification = new RendererModification
+                        {
+                            OriginalMesh = proxySmr.sharedMesh,
+                            OriginalMaterials = proxySmr.sharedMaterials,
+                            UseFastPreview = useFastPreview,
+                            UseLightweightMode = comp.useLightweightMode,
+                        };
+                        _rendererModifications[region.targetRenderer] = modification;
+                    }
 
-                    _rendererModifications[region.targetRenderer] = modification;
+                    modification.UseLightweightMode |= comp.useLightweightMode;
+                    modification.Assignments.Add((region, eyeMat));
+                }
+            }
 
-                    if (useFastPreview)
-                        UpdateFastPreviewMesh(originalSmr, proxySmr, modification, force: true);
-                    else
-                        ApplyStandardPreviewMesh(originalSmr, proxySmr, modification);
+            foreach (var pair in _rendererModifications)
+            {
+                if (pair.Key is not SkinnedMeshRenderer originalSmr) continue;
+                if (!proxyMap.TryGetValue(pair.Key, out var proxyRenderer)) continue;
+                if (proxyRenderer is not SkinnedMeshRenderer proxySmr) continue;
+
+                var modification = pair.Value;
+                if (modification.UseLightweightMode)
+                {
+                    ApplyLightweightPreview(proxySmr, modification);
+                }
+                else if (modification.UseFastPreview && modification.Assignments.Count == 1)
+                {
+                    UpdateFastPreviewMesh(originalSmr, proxySmr, modification, force: true);
+                }
+                else
+                {
+                    ApplyStandardPreviewMesh(originalSmr, proxySmr, modification);
                 }
             }
         }
@@ -187,7 +216,12 @@ namespace com.kakunvr.manaco.Editor
             if (original is not SkinnedMeshRenderer originalSmr) return;
             if (proxy is SkinnedMeshRenderer proxySmr)
             {
-                if (mods.UseFastPreview)
+                if (mods.UseLightweightMode)
+                {
+                    proxySmr.sharedMesh = mods.OriginalMesh;
+                    proxySmr.sharedMaterials = mods.CurrentPreviewMaterials ?? mods.OriginalMaterials;
+                }
+                else if (mods.UseFastPreview && mods.Assignments.Count == 1)
                     UpdateFastPreviewMesh(originalSmr, proxySmr, mods, force: true);
                 else
                 {
@@ -205,20 +239,26 @@ namespace com.kakunvr.manaco.Editor
         {
             proxySmr.sharedMesh = modification.OriginalMesh;
             proxySmr.sharedMaterials = modification.OriginalMaterials;
+            modification.CurrentPreviewMesh = null;
+            modification.CurrentPreviewMaterials = modification.OriginalMaterials;
 
-            var newMesh = _pass.ApplyEyeSubMesh(
-                modification.Region,
-                proxySmr,
-                modification.EyeMaterial,
-                preserveBlendShapes: true);
-
-            if (newMesh != null)
+            foreach (var assignment in modification.Assignments)
             {
+                var newMesh = _pass.ApplyEyeSubMesh(
+                    assignment.Region,
+                    proxySmr,
+                    assignment.EyeMaterial,
+                    preserveBlendShapes: true);
+
+                if (newMesh == null)
+                    continue;
+
                 _createdMeshes.Add(newMesh);
                 modification.CurrentPreviewMesh = newMesh;
                 modification.CurrentPreviewMaterials = proxySmr.sharedMaterials;
-                SyncBlendShapeWeights(originalSmr, proxySmr);
             }
+
+            SyncBlendShapeWeights(originalSmr, proxySmr);
         }
 
         private void UpdateFastPreviewMesh(
@@ -257,10 +297,11 @@ namespace com.kakunvr.manaco.Editor
                 previewMeshSnapshot = ManacoPass.CaptureBlendShapePreviewSnapshot(proxySmr, originalSmr);
             }
 
+            var assignment = modification.Assignments[0];
             var newMesh = _pass.ApplyEyeSubMesh(
-                modification.Region,
+                assignment.Region,
                 proxySmr,
-                modification.EyeMaterial,
+                assignment.EyeMaterial,
                 preserveBlendShapes: false,
                 bakedShapeMesh: bakedShapeMesh,
                 previewMeshSnapshot: previewMeshSnapshot);
@@ -275,6 +316,28 @@ namespace com.kakunvr.manaco.Editor
 
             if (bakedShapeMesh != null)
                 Object.DestroyImmediate(bakedShapeMesh);
+        }
+
+        private void ApplyLightweightPreview(
+            SkinnedMeshRenderer proxySmr,
+            RendererModification modification)
+        {
+            proxySmr.sharedMesh = modification.OriginalMesh;
+            proxySmr.sharedMaterials = modification.OriginalMaterials;
+
+            var materialCache = new Dictionary<(SkinnedMeshRenderer renderer, int materialIndex), Material>();
+            foreach (var assignment in modification.Assignments)
+            {
+                ManacoLightweightUtility.ApplyLightweightMaterial(
+                    assignment.Region,
+                    proxySmr,
+                    assignment.EyeMaterial,
+                    materialCache,
+                    _createdObjects);
+            }
+
+            modification.CurrentPreviewMesh = modification.OriginalMesh;
+            modification.CurrentPreviewMaterials = proxySmr.sharedMaterials;
         }
 
         private static bool HaveBlendShapeWeightsChanged(
@@ -342,11 +405,16 @@ namespace com.kakunvr.manaco.Editor
                 modification.CurrentPreviewMesh = null;
                 modification.CurrentPreviewMaterials = null;
                 modification.LastBlendShapeWeights = null;
+                modification.Assignments.Clear();
             }
             foreach (var mesh in _createdMeshes)
                 if (mesh != null)
                     Object.DestroyImmediate(mesh);
+            foreach (var createdObject in _createdObjects)
+                if (createdObject != null)
+                    Object.DestroyImmediate(createdObject);
             _createdMeshes.Clear();
+            _createdObjects.Clear();
             _rendererModifications.Clear();
         }
     }

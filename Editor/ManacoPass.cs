@@ -31,7 +31,8 @@ namespace com.kakunvr.manaco
 
         private void ProcessComponent(Manaco component)
         {
-            var fallbackMaterialCache = new Dictionary<(Material material, int resolution), Material>();
+            var fallbackMaterialCache = new Dictionary<(Material material, int resolution, bool forceRender), Material>();
+            var lightweightMaterialCache = new Dictionary<(SkinnedMeshRenderer renderer, int materialIndex), Material>();
 
             foreach (var region in component.eyeRegions)
             {
@@ -63,24 +64,43 @@ namespace com.kakunvr.manaco
                     continue;
                 }
 
-                var eyeMaterial = ResolveEyeMaterial(region, fallbackMaterialCache);
-                ApplyEyeSubMesh(region, region.targetRenderer, eyeMaterial);
+                var eyeMaterial = ResolveEyeMaterial(region, component, fallbackMaterialCache);
+                if (component.useLightweightMode)
+                {
+                    ManacoLightweightUtility.ApplyLightweightMaterial(
+                        region,
+                        region.targetRenderer,
+                        eyeMaterial,
+                        lightweightMaterialCache);
+                }
+                else
+                {
+                    ApplyEyeSubMesh(region, region.targetRenderer, eyeMaterial);
+                }
             }
             UnityEngine.Object.DestroyImmediate(component);
         }
 
-        private static Material ResolveEyeMaterial(
+        internal static Material ResolveEyeMaterial(
             Manaco.EyeRegion region,
-            Dictionary<(Material material, int resolution), Material> fallbackMaterialCache)
+            Manaco component,
+            Dictionary<(Material material, int resolution, bool forceRender), Material> fallbackMaterialCache)
         {
             var eyeMaterial = region.customMaterial;
-            if (!region.bakeFallbackTexture || eyeMaterial == null)
+            if (eyeMaterial == null)
                 return eyeMaterial;
 
-            var key = (eyeMaterial, region.fallbackTextureResolution);
+            bool forceRender = component != null && component.useLightweightMode;
+            if (!forceRender && !region.bakeFallbackTexture)
+                return eyeMaterial;
+
+            int resolution = forceRender
+                ? Mathf.Clamp(component.lightweightTextureResolution, 64, 2048)
+                : Mathf.Clamp(region.fallbackTextureResolution, 64, 2048);
+            var key = (eyeMaterial, resolution, forceRender);
             if (!fallbackMaterialCache.TryGetValue(key, out var cachedMaterial))
             {
-                cachedMaterial = BakeFallbackTexture(eyeMaterial, region.fallbackTextureResolution);
+                cachedMaterial = BakeFallbackTexture(eyeMaterial, resolution, forceRender);
                 fallbackMaterialCache[key] = cachedMaterial;
             }
 
@@ -524,7 +544,7 @@ namespace com.kakunvr.manaco
         /// _MainTex に設定したクローンマテリアルを返す。
         /// _MainTex がすでに設定済みか _MainTex プロパティがない場合は元のマテリアルをそのまま返す。
         /// </summary>
-        private static Material BakeFallbackTexture(Material sourceMaterial, int resolution)
+        private static Material BakeFallbackTexture(Material sourceMaterial, int resolution, bool forceRender = false)
         {
             if (sourceMaterial == null) return null;
 
@@ -534,7 +554,7 @@ namespace com.kakunvr.manaco
                 return sourceMaterial;
             }
 
-            if (sourceMaterial.GetTexture("_MainTex") != null)
+            if (!forceRender && sourceMaterial.GetTexture("_MainTex") != null)
             {
                 Debug.Log($"[Manaco] {sourceMaterial.name} の _MainTex はすでに設定済みのため、ベイクをスキップします。");
                 return sourceMaterial;

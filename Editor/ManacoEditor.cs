@@ -9,6 +9,8 @@ namespace com.kakunvr.manaco.Editor
     {
         private SerializedProperty _eyeRegionsProp;
         private SerializedProperty _useNdmfPreviewProp;
+        private SerializedProperty _useLightweightModeProp;
+        private SerializedProperty _lightweightTextureResolutionProp;
         private SerializedProperty _modeProp;
         private SerializedProperty _sourceAvatarPrefabProp;
         private SerializedProperty _tutorialPageProp;
@@ -34,6 +36,8 @@ namespace com.kakunvr.manaco.Editor
         {
             _eyeRegionsProp = serializedObject.FindProperty("eyeRegions");
             _useNdmfPreviewProp = serializedObject.FindProperty("useNdmfPreview");
+            _useLightweightModeProp = serializedObject.FindProperty("useLightweightMode");
+            _lightweightTextureResolutionProp = serializedObject.FindProperty("lightweightTextureResolution");
             _modeProp = serializedObject.FindProperty("mode");
             _sourceAvatarPrefabProp = serializedObject.FindProperty("sourceAvatarPrefab");
             _tutorialPageProp = serializedObject.FindProperty("tutorialPage");
@@ -111,13 +115,7 @@ namespace com.kakunvr.manaco.Editor
                 DrawCopyEyeFromAvatarTop(comp);
 
             EditorGUILayout.Space(8f);
-            EditorGUILayout.PropertyField(_useNdmfPreviewProp, new GUIContent(ManacoLocale.T("Toggle.NdmfPreview")));
-            EditorGUI.BeginChangeCheck();
-            bool useFastPreview = EditorGUILayout.Toggle(ManacoLocale.T("Toggle.FastPreview"), ManacoProjectSettings.UseFastPreview);
-            if (EditorGUI.EndChangeCheck())
-                ManacoProjectSettings.UseFastPreview = useFastPreview;
-            if (ManacoProjectSettings.UseFastPreview)
-                EditorGUILayout.HelpBox(ManacoLocale.T("Message.FastPreviewWarning"), MessageType.Warning);
+            DrawPreviewOptions();
 
             EditorGUILayout.Space(8f);
             _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, ManacoLocale.T("Label.AdvancedSettings"), true, EditorStyles.foldoutHeader);
@@ -444,13 +442,7 @@ namespace com.kakunvr.manaco.Editor
             DrawMaterialSelector(comp);
 
             EditorGUILayout.Space(8f);
-            EditorGUILayout.PropertyField(_useNdmfPreviewProp, new GUIContent(ManacoLocale.T("Toggle.NdmfPreview")));
-            EditorGUI.BeginChangeCheck();
-            bool useFastPreview = EditorGUILayout.Toggle(ManacoLocale.T("Toggle.FastPreview"), ManacoProjectSettings.UseFastPreview);
-            if (EditorGUI.EndChangeCheck())
-                ManacoProjectSettings.UseFastPreview = useFastPreview;
-            if (ManacoProjectSettings.UseFastPreview)
-                EditorGUILayout.HelpBox(ManacoLocale.T("Message.FastPreviewWarning"), MessageType.Warning);
+            DrawPreviewOptions();
 
             DrawMaterialList(comp);
         }
@@ -476,6 +468,24 @@ namespace com.kakunvr.manaco.Editor
 
         private void DrawPreviewSettingsOnly()
         {
+            DrawPreviewOptions();
+        }
+
+        private void DrawPreviewOptions()
+        {
+            EditorGUILayout.PropertyField(
+                _useLightweightModeProp,
+                new GUIContent(ManacoLocale.T("Toggle.LightweightMode"), ManacoLocale.T("Tooltip.LightweightMode")));
+            if (_useLightweightModeProp.boolValue)
+            {
+                _lightweightTextureResolutionProp.intValue = EditorGUILayout.IntPopup(
+                    ManacoLocale.T("Label.LightweightResolution"),
+                    _lightweightTextureResolutionProp.intValue,
+                    new[] { "64", "128", "256", "512", "1024", "2048" },
+                    new[] { 64, 128, 256, 512, 1024, 2048 });
+                EditorGUILayout.HelpBox(ManacoLocale.T("Message.LightweightModeWarning"), MessageType.Info);
+            }
+
             EditorGUILayout.PropertyField(_useNdmfPreviewProp, new GUIContent(ManacoLocale.T("Toggle.NdmfPreview")));
             EditorGUI.BeginChangeCheck();
             bool useFastPreview = EditorGUILayout.Toggle(ManacoLocale.T("Toggle.FastPreview"), ManacoProjectSettings.UseFastPreview);
