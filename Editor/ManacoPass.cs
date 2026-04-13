@@ -33,6 +33,7 @@ namespace com.kakunvr.manaco
         {
             var fallbackMaterialCache = new Dictionary<(Material material, int resolution, bool forceRender), Material>();
             var lightweightMaterialCache = new Dictionary<(SkinnedMeshRenderer renderer, int materialIndex), Material>();
+            bool useLightweightMode = IsLightweightModeEnabled(component);
 
             foreach (var region in component.eyeRegions.OrderBy(GetLightweightPriority))
             {
@@ -47,25 +48,11 @@ namespace com.kakunvr.manaco
                     continue;
                 }
 
-                if (component.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
-                {
-                    if (region.sourceRenderer == null)
-                    {
-                        Debug.LogWarning("[Manaco] CopyEyeFromAvatar: sourceRenderer が未設定のEyeRegionがあります。スキップします。", component);
-                        continue;
-                    }
-                    // NDMF はクローン上で実行されるため region への書き込みは安全
-                    region.customMaterial = ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
-                    if (region.customMaterial == null) continue;
-                }
-                else if (region.customMaterial == null)
-                {
-                    Debug.LogWarning("[Manaco] customMaterial が未設定のEyeRegionがあります。スキップします。", component);
+                var eyeMaterial = ResolveBuildEyeMaterial(region, component, fallbackMaterialCache);
+                if (eyeMaterial == null)
                     continue;
-                }
 
-                var eyeMaterial = ResolveEyeMaterial(region, component, fallbackMaterialCache);
-                if (component.useLightweightMode)
+                if (useLightweightMode)
                 {
                     ManacoLightweightUtility.ApplyLightweightMaterial(
                         region,
@@ -79,6 +66,13 @@ namespace com.kakunvr.manaco
                 }
             }
             UnityEngine.Object.DestroyImmediate(component);
+        }
+
+        private static bool IsLightweightModeEnabled(Manaco component)
+        {
+            return component != null &&
+                   (component.mode == Manaco.ManacoMode.CopyEyeFromAvatar ||
+                    (component.mode == Manaco.ManacoMode.EyeMaterialAssignment && component.useLightweightMode));
         }
 
         private static int GetLightweightPriority(Manaco.EyeRegion region)
@@ -100,12 +94,20 @@ namespace com.kakunvr.manaco
             if (eyeMaterial == null)
                 return eyeMaterial;
 
-            bool forceRender = component != null && component.useLightweightMode;
+            if (component != null && component.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
+                return eyeMaterial;
+
+            bool forceRender = IsLightweightModeEnabled(component);
             if (!forceRender && !region.bakeFallbackTexture)
                 return eyeMaterial;
 
             int resolution = forceRender
-                ? Mathf.Clamp(component.lightweightTextureResolution, 64, 2048)
+                ? Mathf.Clamp(
+                    component != null && component.mode == Manaco.ManacoMode.CopyEyeFromAvatar
+                        ? region.extractTextureResolution
+                        : component.lightweightTextureResolution,
+                    64,
+                    2048)
                 : Mathf.Clamp(region.fallbackTextureResolution, 64, 2048);
             var key = (eyeMaterial, resolution, forceRender);
             if (!fallbackMaterialCache.TryGetValue(key, out var cachedMaterial))
@@ -117,6 +119,34 @@ namespace com.kakunvr.manaco
             }
 
             return cachedMaterial;
+        }
+
+        internal static Material ResolveBuildEyeMaterial(
+            Manaco.EyeRegion region,
+            Manaco component,
+            Dictionary<(Material material, int resolution, bool forceRender), Material> fallbackMaterialCache)
+        {
+            if (region == null || component == null)
+                return null;
+
+            if (component.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
+            {
+                if (region.sourceRenderer == null)
+                {
+                    Debug.LogWarning("[Manaco] CopyEyeFromAvatar: sourceRenderer が未設定のEyeRegionがあります。スキップします。", component);
+                    return null;
+                }
+
+                return ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
+            }
+
+            if (region.customMaterial == null)
+            {
+                Debug.LogWarning("[Manaco] customMaterial が未設定のEyeRegionがあります。スキップします。", component);
+                return null;
+            }
+
+            return ResolveEyeMaterial(region, component, fallbackMaterialCache);
         }
 
         internal Mesh ApplyEyeSubMesh(

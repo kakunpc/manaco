@@ -10,6 +10,13 @@ namespace com.kakunvr.manaco.Editor
 {
     public class ManacoPreviewFilter : IRenderFilter
     {
+        private static bool IsLightweightModeEnabled(Manaco comp)
+        {
+            return comp != null &&
+                   comp.mode == Manaco.ManacoMode.EyeMaterialAssignment &&
+                   comp.useLightweightMode;
+        }
+
         private static int GetLightweightPriority(Manaco.EyeRegion region)
         {
             return region.eyeType switch
@@ -120,7 +127,14 @@ namespace com.kakunvr.manaco.Editor
 
     public class ManacoPreviewNode : IRenderFilterNode
     {
-        public RenderAspects WhatChanged => RenderAspects.Mesh | RenderAspects.Material;
+        public RenderAspects WhatChanged => RenderAspects.Mesh | RenderAspects.Material | RenderAspects.Texture;
+
+        private static bool IsLightweightModeEnabled(Manaco comp)
+        {
+            return comp != null &&
+                   comp.mode == Manaco.ManacoMode.EyeMaterialAssignment &&
+                   comp.useLightweightMode;
+        }
 
         private sealed class RendererModification
         {
@@ -153,28 +167,13 @@ namespace com.kakunvr.manaco.Editor
 
             foreach (var comp in comps)
             {
-                foreach (var region in comp.eyeRegions)
+                bool useLightweightPreview = IsLightweightModeEnabled(comp);
+                foreach (var region in comp.eyeRegions.OrderBy(GetLightweightPriority))
                 {
                     if (region.targetRenderer == null) continue;
                     if (region.eyePolygonRegions == null || region.eyePolygonRegions.Length == 0) continue;
 
-                    // モードに応じて使用するマテリアルを決定（実コンポーネントには書き込まない）
-                    Material eyeMat;
-                    if (comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
-                    {
-                        if (region.sourceRenderer == null) continue;
-                        if (region.sourceEyePolygonRegions == null || region.sourceEyePolygonRegions.Length == 0) continue;
-                        eyeMat = ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
-                        if (eyeMat == null) continue;
-                        region.customMaterial = eyeMat;
-                    }
-                    else // EyeMaterialAssignment
-                    {
-                        if (region.customMaterial == null) continue;
-                        eyeMat = region.customMaterial;
-                    }
-
-                    eyeMat = ManacoPass.ResolveEyeMaterial(region, comp, _fallbackMaterialCache);
+                    var eyeMat = ResolvePreviewEyeMaterial(region, comp);
                     if (eyeMat == null) continue;
 
                     if (region.targetRenderer is not SkinnedMeshRenderer originalSmr) continue;
@@ -188,12 +187,12 @@ namespace com.kakunvr.manaco.Editor
                             OriginalMesh = proxySmr.sharedMesh,
                             OriginalMaterials = proxySmr.sharedMaterials,
                             UseFastPreview = useFastPreview,
-                            UseLightweightMode = comp.useLightweightMode,
+                            UseLightweightMode = useLightweightPreview,
                         };
                         _rendererModifications[region.targetRenderer] = modification;
                     }
 
-                    modification.UseLightweightMode |= comp.useLightweightMode;
+                    modification.UseLightweightMode |= useLightweightPreview;
                     modification.Assignments.Add((region, eyeMat));
                 }
             }
@@ -207,7 +206,7 @@ namespace com.kakunvr.manaco.Editor
                 var modification = pair.Value;
                 if (modification.UseLightweightMode)
                 {
-                    ApplyLightweightPreview(proxySmr, modification);
+                    ApplyLightweightPreview(originalSmr, proxySmr, modification);
                 }
                 else if (modification.UseFastPreview && modification.Assignments.Count == 1)
                 {
@@ -218,6 +217,27 @@ namespace com.kakunvr.manaco.Editor
                     ApplyStandardPreviewMesh(originalSmr, proxySmr, modification);
                 }
             }
+        }
+
+        private Material ResolvePreviewEyeMaterial(Manaco.EyeRegion region, Manaco comp)
+        {
+            if (region == null || comp == null)
+                return null;
+
+            if (comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
+            {
+                if (region.sourceRenderer == null)
+                    return null;
+                if (region.sourceEyePolygonRegions == null || region.sourceEyePolygonRegions.Length == 0)
+                    return null;
+
+                return ManacoEyeCopyProcessor.PrepareEyeCopyMaterial(region);
+            }
+
+            if (region.customMaterial == null)
+                return null;
+
+            return ManacoPass.ResolveEyeMaterial(region, comp, _fallbackMaterialCache);
         }
 
         public void OnFrame(Renderer original, Renderer proxy)
@@ -329,6 +349,7 @@ namespace com.kakunvr.manaco.Editor
         }
 
         private void ApplyLightweightPreview(
+            SkinnedMeshRenderer originalSmr,
             SkinnedMeshRenderer proxySmr,
             RendererModification modification)
         {
@@ -336,14 +357,21 @@ namespace com.kakunvr.manaco.Editor
             proxySmr.sharedMaterials = modification.OriginalMaterials;
 
             var materialCache = new Dictionary<(SkinnedMeshRenderer renderer, int materialIndex), Material>();
+            bool appliedAny = false;
             foreach (var assignment in modification.Assignments.OrderBy(a => GetLightweightPriority(a.Region)))
             {
-                ManacoLightweightUtility.ApplyLightweightMaterial(
+                appliedAny |= ManacoLightweightUtility.ApplyLightweightMaterial(
                     assignment.Region,
                     proxySmr,
                     assignment.EyeMaterial,
                     materialCache,
                     _createdObjects);
+            }
+
+            if (!appliedAny)
+            {
+                ApplyStandardPreviewMesh(originalSmr, proxySmr, modification);
+                return;
             }
 
             modification.CurrentPreviewMesh = modification.OriginalMesh;

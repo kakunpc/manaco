@@ -173,9 +173,53 @@ namespace com.kakunvr.manaco.Editor
             if (EditorGUI.EndChangeCheck())
             {
                 _modeProp.enumValueIndex = newModeIndex;
+                serializedObject.ApplyModifiedProperties();
+                serializedObject.Update();
                 _expandedRegionIndex = -1;
                 _selectorCache.Clear();
+
+                var comp = (Manaco)target;
+                if ((Manaco.ManacoMode)newModeIndex == Manaco.ManacoMode.EyeMaterialAssignment)
+                    RestoreMaterialsForAssignmentMode(comp);
             }
+        }
+
+        private void RestoreMaterialsForAssignmentMode(Manaco comp)
+        {
+            if (comp == null)
+                return;
+
+            Undo.RecordObject(comp, "Restore Manaco Materials");
+
+            if (comp.appliedShaderDef != null)
+            {
+                ApplyShader(comp, comp.appliedShaderDef);
+                return;
+            }
+
+            bool changed = false;
+            foreach (var region in comp.eyeRegions)
+            {
+                if (IsTransientCopyMaterial(region.customMaterial))
+                {
+                    region.customMaterial = null;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                serializedObject.Update();
+                EditorUtility.SetDirty(comp);
+            }
+        }
+
+        private static bool IsTransientCopyMaterial(Material material)
+        {
+            if (material == null)
+                return false;
+
+            return material.name.EndsWith("_ManacoCopy");
         }
 
         private void DrawEyeMaterialAssignmentTop(Manaco comp)
@@ -473,17 +517,22 @@ namespace com.kakunvr.manaco.Editor
 
         private void DrawPreviewOptions()
         {
-            EditorGUILayout.PropertyField(
-                _useLightweightModeProp,
-                new GUIContent(ManacoLocale.T("Toggle.LightweightMode"), ManacoLocale.T("Tooltip.LightweightMode")));
-            if (_useLightweightModeProp.boolValue)
+            bool isCopyMode = (Manaco.ManacoMode)_modeProp.enumValueIndex == Manaco.ManacoMode.CopyEyeFromAvatar;
+
+            if (!isCopyMode)
             {
-                _lightweightTextureResolutionProp.intValue = EditorGUILayout.IntPopup(
-                    ManacoLocale.T("Label.LightweightResolution"),
-                    _lightweightTextureResolutionProp.intValue,
-                    new[] { "64", "128", "256", "512", "1024", "2048" },
-                    new[] { 64, 128, 256, 512, 1024, 2048 });
-                EditorGUILayout.HelpBox(ManacoLocale.T("Message.LightweightModeWarning"), MessageType.Info);
+                EditorGUILayout.PropertyField(
+                    _useLightweightModeProp,
+                    new GUIContent(ManacoLocale.T("Toggle.LightweightMode"), ManacoLocale.T("Tooltip.LightweightMode")));
+                if (_useLightweightModeProp.boolValue)
+                {
+                    _lightweightTextureResolutionProp.intValue = EditorGUILayout.IntPopup(
+                        ManacoLocale.T("Label.LightweightResolution"),
+                        _lightweightTextureResolutionProp.intValue,
+                        new[] { "64", "128", "256", "512", "1024", "2048" },
+                        new[] { 64, 128, 256, 512, 1024, 2048 });
+                    EditorGUILayout.HelpBox(ManacoLocale.T("Message.LightweightModeWarning"), MessageType.Info);
+                }
             }
 
             EditorGUILayout.PropertyField(_useNdmfPreviewProp, new GUIContent(ManacoLocale.T("Toggle.NdmfPreview")));
