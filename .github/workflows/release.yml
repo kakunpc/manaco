@@ -43,6 +43,7 @@ jobs:
         env:
           VERSION: ${{ steps.vars.outputs.version }}
         run: |
+          git restore package.json
           git fetch origin versions || true
           if git show-ref --verify --quiet refs/remotes/origin/versions; then
             git checkout -B versions origin/versions

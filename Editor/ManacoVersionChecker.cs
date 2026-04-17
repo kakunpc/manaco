@@ -1,7 +1,6 @@
 using System;
 using System.Threading.Tasks;
 using UnityEditor;
-using UnityEditor.PackageManager;
 using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -15,6 +14,7 @@ namespace com.kakunvr.manaco.Editor
         private const string CheckedKey = "com.kakunvr.manaco.version.checked";
         private const string LatestVersionKey = "com.kakunvr.manaco.version.latest";
         private const string ReleaseUrlKey = "com.kakunvr.manaco.version.releaseUrl";
+        private static bool _isChecking;
 
         [Serializable]
         private sealed class LatestVersionInfo
@@ -67,22 +67,48 @@ namespace com.kakunvr.manaco.Editor
 
         private static async Task FetchLatestVersionAsync()
         {
-            using (var request = UnityWebRequest.Get(LatestUrl))
+            if (_isChecking)
+                return;
+
+            _isChecking = true;
+
+            try
             {
-                var op = request.SendWebRequest();
-                while (!op.isDone)
-                    await Task.Delay(100);
+                string requestUrl = $"{LatestUrl}?t={DateTimeOffset.UtcNow.ToUnixTimeSeconds()}";
+                using (var request = UnityWebRequest.Get(requestUrl))
+                {
+                    request.SetRequestHeader("Cache-Control", "no-cache");
+                    request.SetRequestHeader("Pragma", "no-cache");
 
-                if (request.result != UnityWebRequest.Result.Success || string.IsNullOrEmpty(request.downloadHandler.text))
-                    return;
+                    var op = request.SendWebRequest();
+                    while (!op.isDone)
+                        await Task.Delay(100);
 
-                var info = JsonUtility.FromJson<LatestVersionInfo>(request.downloadHandler.text);
-                if (info == null || string.IsNullOrEmpty(info.version))
-                    return;
+                    if (request.result != UnityWebRequest.Result.Success || string.IsNullOrEmpty(request.downloadHandler.text))
+                    {
+                        Debug.LogWarning($"[Manaco][Version] Failed to fetch latest version: {request.error}");
+                        return;
+                    }
 
-                SessionState.SetString(LatestVersionKey, info.version);
-                SessionState.SetString(ReleaseUrlKey, info.url ?? string.Empty);
-                InternalEditorUtility.RepaintAllViews();
+                    var info = JsonUtility.FromJson<LatestVersionInfo>(request.downloadHandler.text);
+                    if (info == null || string.IsNullOrEmpty(info.version))
+                    {
+                        Debug.LogWarning("[Manaco][Version] latest.json did not contain a valid version.");
+                        return;
+                    }
+
+                    EditorApplication.delayCall += () =>
+                    {
+                        SessionState.SetString(LatestVersionKey, info.version);
+                        SessionState.SetString(ReleaseUrlKey, info.url ?? string.Empty);
+                        InternalEditorUtility.RepaintAllViews();
+                        Debug.Log($"[Manaco][Version] Current={CurrentVersion}, Latest={info.version}");
+                    };
+                }
+            }
+            finally
+            {
+                _isChecking = false;
             }
         }
 
