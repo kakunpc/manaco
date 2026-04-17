@@ -61,6 +61,19 @@ namespace com.kakunvr.manaco.Editor
                 return null;
 
             var baseTexture = targetMaterial.GetTexture("_MainTex");
+            return CreateCompositedMainTexture(region, mesh, targetMaterial, baseTexture, eyeMaterial);
+        }
+
+        internal static Texture2D CreateCompositedMainTexture(
+            Manaco.EyeRegion region,
+            Mesh mesh,
+            Material targetMaterial,
+            Texture baseTexture,
+            Material eyeMaterial)
+        {
+            if (mesh == null || targetMaterial == null || baseTexture == null || eyeMaterial == null)
+                return null;
+
             var eyeTexture = eyeMaterial.HasProperty("_MainTex")
                 ? eyeMaterial.GetTexture("_MainTex")
                 : eyeMaterial.mainTexture;
@@ -111,6 +124,14 @@ namespace com.kakunvr.manaco.Editor
             Object.DestroyImmediate(readableBase);
             Object.DestroyImmediate(readableEye);
             return output;
+        }
+
+        internal static Texture2D ReadMainTextureCopy(Material material, string name)
+        {
+            if (material == null || !material.HasProperty("_MainTex"))
+                return null;
+
+            return ReadTexture(material.GetTexture("_MainTex"), name);
         }
 
         private static List<Vector2[]> CollectSelectedTriangles(

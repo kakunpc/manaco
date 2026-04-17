@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -115,7 +117,7 @@ namespace com.kakunvr.manaco.Editor
                 DrawCopyEyeFromAvatarTop(comp);
 
             EditorGUILayout.Space(8f);
-            DrawPreviewOptions();
+            DrawPreviewOptions(comp);
 
             EditorGUILayout.Space(8f);
             _showAdvanced = EditorGUILayout.Foldout(_showAdvanced, ManacoLocale.T("Label.AdvancedSettings"), true, EditorStyles.foldoutHeader);
@@ -486,7 +488,7 @@ namespace com.kakunvr.manaco.Editor
             DrawMaterialSelector(comp);
 
             EditorGUILayout.Space(8f);
-            DrawPreviewOptions();
+            DrawPreviewOptions(comp);
 
             DrawMaterialList(comp);
         }
@@ -512,12 +514,13 @@ namespace com.kakunvr.manaco.Editor
 
         private void DrawPreviewSettingsOnly()
         {
-            DrawPreviewOptions();
+            DrawPreviewOptions((Manaco)target);
         }
 
-        private void DrawPreviewOptions()
+        private void DrawPreviewOptions(Manaco comp)
         {
             bool isCopyMode = (Manaco.ManacoMode)_modeProp.enumValueIndex == Manaco.ManacoMode.CopyEyeFromAvatar;
+            bool showTextureExportButton = ShouldShowTextureExportButton(comp);
 
             if (!isCopyMode)
             {
@@ -535,6 +538,12 @@ namespace com.kakunvr.manaco.Editor
                 }
             }
 
+            if (showTextureExportButton)
+            {
+                if (GUILayout.Button(ManacoLocale.T("Button.ExportTexture")))
+                    ManacoTextureExportUtility.ExportTexture(comp);
+            }
+
             EditorGUILayout.PropertyField(_useNdmfPreviewProp, new GUIContent(ManacoLocale.T("Toggle.NdmfPreview")));
             EditorGUI.BeginChangeCheck();
             bool useFastPreview = EditorGUILayout.Toggle(ManacoLocale.T("Toggle.FastPreview"), ManacoProjectSettings.UseFastPreview);
@@ -543,6 +552,15 @@ namespace com.kakunvr.manaco.Editor
 
             if (ManacoProjectSettings.UseFastPreview)
                 EditorGUILayout.HelpBox(ManacoLocale.T("Message.FastPreviewWarning"), MessageType.Warning);
+        }
+
+        private bool ShouldShowTextureExportButton(Manaco comp)
+        {
+            if (comp == null)
+                return false;
+
+            return comp.mode == Manaco.ManacoMode.CopyEyeFromAvatar ||
+                   (comp.mode == Manaco.ManacoMode.EyeMaterialAssignment && comp.useLightweightMode);
         }
 
         private void DrawTutorialIslandStep(Manaco comp, int regionIndex, bool isSource)
@@ -948,6 +966,148 @@ namespace com.kakunvr.manaco.Editor
             SourceSetup,
             SourceIsland,
             FinalPreview,
+        }
+    }
+
+    internal static class ManacoTextureExportUtility
+    {
+        internal static void ExportTexture(Manaco component)
+        {
+            if (component == null)
+                return;
+
+            var exportedTextures = BuildExportTextures(component);
+            if (exportedTextures.Count == 0)
+            {
+                EditorUtility.DisplayDialog(
+                    ManacoLocale.T("Dialog.TextureExportTitle"),
+                    ManacoLocale.T("Dialog.TextureExportNoTexture"),
+                    "OK");
+                return;
+            }
+
+            string defaultName = exportedTextures.Count == 1
+                ? exportedTextures[0].DefaultFileName
+                : $"{component.name}_ManacoLightweight";
+            string path = EditorUtility.SaveFilePanel(
+                ManacoLocale.T("Dialog.TextureExportTitle"),
+                "Assets",
+                defaultName,
+                "png");
+            if (string.IsNullOrEmpty(path))
+                return;
+
+            string directory = Path.GetDirectoryName(path);
+            string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(path);
+
+            for (int i = 0; i < exportedTextures.Count; i++)
+            {
+                var exportedTexture = exportedTextures[i];
+                string outputPath = exportedTextures.Count == 1
+                    ? path
+                    : Path.Combine(directory, $"{fileNameWithoutExtension}_{exportedTexture.FileSuffix}.png");
+                File.WriteAllBytes(outputPath, exportedTexture.Texture.EncodeToPNG());
+            }
+
+            foreach (var exportedTexture in exportedTextures)
+                Object.DestroyImmediate(exportedTexture.Texture);
+
+            AssetDatabase.Refresh();
+            EditorUtility.DisplayDialog(
+                ManacoLocale.T("Dialog.TextureExportTitle"),
+                exportedTextures.Count == 1
+                    ? ManacoLocale.T("Dialog.TextureExportSuccessSingle")
+                    : ManacoLocale.T("Dialog.TextureExportSuccessMultiple", exportedTextures.Count),
+                "OK");
+        }
+
+        private static List<ExportedTexture> BuildExportTextures(Manaco component)
+        {
+            var fallbackMaterialCache = new Dictionary<(Material material, int resolution, bool forceRender), Material>();
+            var outputs = new Dictionary<(SkinnedMeshRenderer renderer, int materialIndex), ExportedTexture>();
+
+            foreach (var region in component.eyeRegions.OrderBy(GetPriority))
+            {
+                if (region.targetRenderer == null || region.targetRenderer.sharedMesh == null)
+                    continue;
+                if (region.eyePolygonRegions == null || region.eyePolygonRegions.Length == 0)
+                    continue;
+
+                var sharedMaterials = region.targetRenderer.sharedMaterials;
+                if (sharedMaterials == null || sharedMaterials.Length == 0)
+                    continue;
+
+                int materialIndex = Mathf.Clamp(region.materialIndex, 0, sharedMaterials.Length - 1);
+                var baseMaterial = sharedMaterials[materialIndex];
+                if (baseMaterial == null)
+                    continue;
+
+                var eyeMaterial = ManacoPass.ResolveBuildEyeMaterial(region, component, fallbackMaterialCache);
+                if (eyeMaterial == null)
+                    continue;
+
+                var key = (region.targetRenderer, materialIndex);
+                if (!outputs.TryGetValue(key, out var export))
+                {
+                    export = new ExportedTexture
+                    {
+                        Texture = ManacoLightweightUtility.ReadMainTextureCopy(baseMaterial, baseMaterial.name + "_ManacoExport"),
+                        BaseMaterial = baseMaterial,
+                        DefaultFileName = SanitizeFileName(baseMaterial.name + "_Manaco"),
+                        FileSuffix = BuildFileSuffix(region.targetRenderer, materialIndex),
+                    };
+
+                    if (export.Texture == null)
+                        continue;
+
+                    outputs.Add(key, export);
+                }
+
+                var compositedTexture = ManacoLightweightUtility.CreateCompositedMainTexture(
+                    region,
+                    region.targetRenderer.sharedMesh,
+                    export.BaseMaterial,
+                    export.Texture,
+                    eyeMaterial);
+                if (compositedTexture == null)
+                    continue;
+
+                Object.DestroyImmediate(export.Texture);
+                export.Texture = compositedTexture;
+            }
+
+            return outputs.Values.Where(v => v.Texture != null).ToList();
+        }
+
+        private static string BuildFileSuffix(SkinnedMeshRenderer renderer, int materialIndex)
+        {
+            string rendererName = renderer != null ? renderer.name : "Renderer";
+            return $"{SanitizeFileName(rendererName)}_slot{materialIndex}";
+        }
+
+        private static string SanitizeFileName(string fileName)
+        {
+            foreach (char c in Path.GetInvalidFileNameChars())
+                fileName = fileName.Replace(c, '_');
+            return fileName;
+        }
+
+        private static int GetPriority(Manaco.EyeRegion region)
+        {
+            return region.eyeType switch
+            {
+                Manaco.EyeType.LeftPupil => 1,
+                Manaco.EyeType.RightPupil => 1,
+                _ => 0,
+            };
+        }
+
+        private sealed class ExportedTexture
+        {
+            public Texture2D Texture;
+            public Material BaseMaterial;
+            public string DefaultFileName;
+            public string FileSuffix;
         }
     }
 }

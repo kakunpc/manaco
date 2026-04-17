@@ -121,6 +121,11 @@ namespace com.kakunvr.manaco.Editor
             ["Tutorial.SourceUvTitle"] = "{0} コピー元 UV",
             ["Button.OpenEmbeddedUv"] = "UV をインスペクター内で選択",
             ["Button.CloseEmbeddedUv"] = "UV 選択を閉じる",
+            ["Button.ExportTexture"] = "テクスチャ出力",
+            ["Dialog.TextureExportTitle"] = "テクスチャ出力",
+            ["Dialog.TextureExportNoTexture"] = "出力できるテクスチャが見つかりませんでした。",
+            ["Dialog.TextureExportSuccessSingle"] = "PNGテクスチャを書き出しました。",
+            ["Dialog.TextureExportSuccessMultiple"] = "{0} 枚のPNGテクスチャを書き出しました。",
         };
 
         private static readonly Dictionary<string, string> _enSupplemental = new Dictionary<string, string>
@@ -167,6 +172,11 @@ namespace com.kakunvr.manaco.Editor
             ["Tutorial.SourceUvTitle"] = "{0} Source UV",
             ["Button.OpenEmbeddedUv"] = "Select UV in Inspector",
             ["Button.CloseEmbeddedUv"] = "Close UV selection",
+            ["Button.ExportTexture"] = "Export Texture",
+            ["Dialog.TextureExportTitle"] = "Export Texture",
+            ["Dialog.TextureExportNoTexture"] = "No exportable texture was found.",
+            ["Dialog.TextureExportSuccessSingle"] = "Exported the PNG texture.",
+            ["Dialog.TextureExportSuccessMultiple"] = "Exported {0} PNG textures.",
         };
 
         private static readonly Dictionary<string, string> _jaAdditionalSupplemental = new Dictionary<string, string>
