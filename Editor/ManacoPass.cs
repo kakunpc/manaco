@@ -9,7 +9,7 @@ using UnityEngine.Rendering;
 namespace com.kakunvr.manaco
 {
     /// <summary>
-    /// ビルド時に目のポリゴンを別SubMeshに分割し、UV を [0, 1] に正規化するパス。
+    /// ビルド時に目のポリゴンを別SubMeshに分割し、UV を円形テクスチャ向けに再配置するパス。
     /// 頂点は複製して元のメッシュデータに影響を与えない。
     /// </summary>
     public class ManacoPass
@@ -265,21 +265,8 @@ namespace com.kakunvr.manaco
                 return null;
             }
 
-            // ---- 目の頂点UV境界を計算（楕円→円形リマッピング用） ----
             var eyeVertSet = new HashSet<int>(eyeTriangles);
-            float minU = float.MaxValue, minV = float.MaxValue;
-            float maxU = float.MinValue, maxV = float.MinValue;
-            foreach (int vi in eyeVertSet)
-            {
-                if (uvs[vi].x < minU) minU = uvs[vi].x;
-                if (uvs[vi].y < minV) minV = uvs[vi].y;
-                if (uvs[vi].x > maxU) maxU = uvs[vi].x;
-                if (uvs[vi].y > maxV) maxV = uvs[vi].y;
-            }
-            float centerU = (minU + maxU) * 0.5f;
-            float centerV = (minV + maxV) * 0.5f;
-            float rangeU  = Mathf.Max(maxU - minU, 1e-5f);
-            float rangeV  = Mathf.Max(maxV - minV, 1e-5f);
+            var circularUvMapping = BuildCircularUvMapping(uvs, eyeTriangles);
 
             // ---- ブレンドシェイプを頂点数変更前に保存 ----
             if (!preserveBlendShapes && mesh.blendShapeCount > 0)
@@ -335,10 +322,9 @@ namespace com.kakunvr.manaco
                 if (uv3.Count      > vi) uv3.Add(uv3[vi]);
                 if (uv4.Count      > vi) uv4.Add(uv4[vi]);
 
-                // U・V を独立スケールして [0, 1] に正規化（楕円→円形マッピング）
-                uvList.Add(new Vector2(
-                    0.5f + (uvs[vi].x - centerU) / rangeU,
-                    0.5f + (uvs[vi].y - centerV) / rangeV));
+                uvList.Add(circularUvMapping.TryGetVertexUv(vi, out var circularUv)
+                    ? circularUv
+                    : new Vector2(0.5f, 0.5f));
             }
 
             // 目トライアングルのインデックスを複製頂点に差し替え
@@ -676,6 +662,524 @@ namespace com.kakunvr.manaco
             int yi = Mathf.RoundToInt(uv.y * 10000);
             return ((long)xi << 32) | (uint)yi;
         }
+
+        internal sealed class CircularUvMapping
+        {
+            internal readonly Dictionary<int, Vector2> VertexUvs = new Dictionary<int, Vector2>();
+            internal readonly List<CircularUvTriangle> Triangles = new List<CircularUvTriangle>();
+
+            internal bool TryGetVertexUv(int vertexIndex, out Vector2 uv) => VertexUvs.TryGetValue(vertexIndex, out uv);
+        }
+
+        internal sealed class CircularUvTriangle
+        {
+            internal readonly Vector2 Uv0;
+            internal readonly Vector2 Uv1;
+            internal readonly Vector2 Uv2;
+            internal readonly Vector2 RemappedUv0;
+            internal readonly Vector2 RemappedUv1;
+            internal readonly Vector2 RemappedUv2;
+
+            internal CircularUvTriangle(Vector2 uv0, Vector2 uv1, Vector2 uv2, CircularUvIsland island)
+            {
+                Uv0 = uv0;
+                Uv1 = uv1;
+                Uv2 = uv2;
+                RemappedUv0 = island.Remap(uv0);
+                RemappedUv1 = island.Remap(uv1);
+                RemappedUv2 = island.Remap(uv2);
+            }
+
+            internal Vector2 InterpolateRemapped(float w0, float w1, float w2, float inverseArea)
+            {
+                float b0 = w0 * inverseArea;
+                float b1 = w1 * inverseArea;
+                float b2 = w2 * inverseArea;
+                var uv = RemappedUv0 * b0 + RemappedUv1 * b1 + RemappedUv2 * b2;
+                return new Vector2(Mathf.Clamp01(uv.x), Mathf.Clamp01(uv.y));
+            }
+        }
+
+        internal static CircularUvMapping BuildCircularUvMapping(Vector2[] uvs, IReadOnlyList<int> triangleIndices)
+        {
+            var mapping = new CircularUvMapping();
+            if (uvs == null || triangleIndices == null || triangleIndices.Count < 3)
+                return mapping;
+
+            foreach (var component in SplitCircularUvComponents(uvs, triangleIndices))
+            {
+                var island = CreateCircularUvIsland(uvs, triangleIndices, component);
+                if (island == null)
+                    continue;
+
+                foreach (int triangleIndex in component)
+                {
+                    int start = triangleIndex * 3;
+                    if (!TryGetTriangleVertices(triangleIndices, start, uvs.Length, out int i0, out int i1, out int i2))
+                        continue;
+
+                    var triangle = new CircularUvTriangle(uvs[i0], uvs[i1], uvs[i2], island);
+                    mapping.Triangles.Add(triangle);
+                    mapping.VertexUvs[i0] = triangle.RemappedUv0;
+                    mapping.VertexUvs[i1] = triangle.RemappedUv1;
+                    mapping.VertexUvs[i2] = triangle.RemappedUv2;
+                }
+            }
+
+            return mapping;
+        }
+
+        private static List<List<int>> SplitCircularUvComponents(Vector2[] uvs, IReadOnlyList<int> triangleIndices)
+        {
+            int triangleCount = triangleIndices.Count / 3;
+            var uvToTriangles = new Dictionary<long, List<int>>();
+            for (int triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++)
+            {
+                int start = triangleIndex * 3;
+                if (!TryGetTriangleVertices(triangleIndices, start, uvs.Length, out int i0, out int i1, out int i2))
+                    continue;
+
+                AddTriangleReference(uvToTriangles, QuantizeUV(uvs[i0]), triangleIndex);
+                AddTriangleReference(uvToTriangles, QuantizeUV(uvs[i1]), triangleIndex);
+                AddTriangleReference(uvToTriangles, QuantizeUV(uvs[i2]), triangleIndex);
+            }
+
+            var components = new List<List<int>>();
+            var visited = new HashSet<int>();
+            for (int startTriangle = 0; startTriangle < triangleCount; startTriangle++)
+            {
+                if (!visited.Add(startTriangle))
+                    continue;
+
+                var component = new List<int>();
+                var queue = new Queue<int>();
+                queue.Enqueue(startTriangle);
+                while (queue.Count > 0)
+                {
+                    int current = queue.Dequeue();
+                    component.Add(current);
+
+                    int start = current * 3;
+                    if (!TryGetTriangleVertices(triangleIndices, start, uvs.Length, out int i0, out int i1, out int i2))
+                        continue;
+
+                    EnqueueUvNeighbors(uvToTriangles, visited, queue, QuantizeUV(uvs[i0]));
+                    EnqueueUvNeighbors(uvToTriangles, visited, queue, QuantizeUV(uvs[i1]));
+                    EnqueueUvNeighbors(uvToTriangles, visited, queue, QuantizeUV(uvs[i2]));
+                }
+
+                if (component.Count > 0)
+                    components.Add(component);
+            }
+
+            return components;
+        }
+
+        private static CircularUvIsland CreateCircularUvIsland(
+            Vector2[] uvs,
+            IReadOnlyList<int> triangleIndices,
+            IReadOnlyList<int> component)
+        {
+            var points = new Dictionary<long, UvPointAccumulator>();
+            var triangleIncidence = new Dictionary<long, int>();
+            foreach (int triangleIndex in component)
+            {
+                int start = triangleIndex * 3;
+                if (!TryGetTriangleVertices(triangleIndices, start, uvs.Length, out int i0, out int i1, out int i2))
+                    continue;
+
+                AddPoint(points, uvs[i0]);
+                AddPoint(points, uvs[i1]);
+                AddPoint(points, uvs[i2]);
+
+                var uniqueTrianglePoints = new HashSet<long>
+                {
+                    QuantizeUV(uvs[i0]),
+                    QuantizeUV(uvs[i1]),
+                    QuantizeUV(uvs[i2])
+                };
+                foreach (long key in uniqueTrianglePoints)
+                    triangleIncidence[key] = triangleIncidence.TryGetValue(key, out int count) ? count + 1 : 1;
+            }
+
+            if (points.Count == 0)
+                return null;
+
+            var center = EstimateCircularCenter(points, triangleIncidence);
+            var bounds = CalculateBounds(points);
+            var edgeCounts = CollectComponentEdges(uvs, triangleIndices, component, points);
+            var boundaryEdges = new List<CircularUvEdge>();
+            var boundaryPointKeys = new HashSet<long>();
+            foreach (var entry in edgeCounts)
+            {
+                if (entry.Value.Count != 1)
+                    continue;
+
+                var edge = entry.Value;
+                boundaryEdges.Add(new CircularUvEdge(edge.A, edge.B));
+                boundaryPointKeys.Add(entry.Key.Item1);
+                boundaryPointKeys.Add(entry.Key.Item2);
+            }
+
+            var boundaryPoints = new List<Vector2>();
+            foreach (long key in boundaryPointKeys)
+            {
+                if (!points.TryGetValue(key, out var point))
+                    continue;
+
+                var uv = point.Average;
+                if ((uv - center).sqrMagnitude > 1e-10f)
+                    boundaryPoints.Add(uv);
+            }
+
+            if (boundaryPoints.Count == 0)
+            {
+                foreach (var point in points.Values)
+                {
+                    var uv = point.Average;
+                    if ((uv - center).sqrMagnitude > 1e-10f)
+                        boundaryPoints.Add(uv);
+                }
+            }
+
+            return new CircularUvIsland(center, bounds, boundaryEdges, boundaryPoints);
+        }
+
+        private static Dictionary<(long, long), UvEdgeAccumulator> CollectComponentEdges(
+            Vector2[] uvs,
+            IReadOnlyList<int> triangleIndices,
+            IReadOnlyList<int> component,
+            Dictionary<long, UvPointAccumulator> points)
+        {
+            var edgeCounts = new Dictionary<(long, long), UvEdgeAccumulator>();
+            foreach (int triangleIndex in component)
+            {
+                int start = triangleIndex * 3;
+                if (!TryGetTriangleVertices(triangleIndices, start, uvs.Length, out int i0, out int i1, out int i2))
+                    continue;
+
+                AddEdge(edgeCounts, points, QuantizeUV(uvs[i0]), QuantizeUV(uvs[i1]));
+                AddEdge(edgeCounts, points, QuantizeUV(uvs[i1]), QuantizeUV(uvs[i2]));
+                AddEdge(edgeCounts, points, QuantizeUV(uvs[i2]), QuantizeUV(uvs[i0]));
+            }
+
+            return edgeCounts;
+        }
+
+        private static Vector2 EstimateCircularCenter(
+            Dictionary<long, UvPointAccumulator> points,
+            Dictionary<long, int> triangleIncidence)
+        {
+            var average = Vector2.zero;
+            foreach (var point in points.Values)
+                average += point.Average;
+            average /= Mathf.Max(1, points.Count);
+
+            long bestKey = 0;
+            int bestCount = -1;
+            int secondCount = -1;
+            foreach (var entry in triangleIncidence)
+            {
+                if (entry.Value > bestCount)
+                {
+                    secondCount = bestCount;
+                    bestCount = entry.Value;
+                    bestKey = entry.Key;
+                }
+                else if (entry.Value > secondCount)
+                {
+                    secondCount = entry.Value;
+                }
+            }
+
+            if (bestCount >= 3 && bestCount > secondCount && points.TryGetValue(bestKey, out var bestPoint))
+            {
+                var candidate = bestPoint.Average;
+                float maxDistance = 0f;
+                foreach (var point in points.Values)
+                    maxDistance = Mathf.Max(maxDistance, (point.Average - average).magnitude);
+
+                if (maxDistance <= 1e-5f || (candidate - average).magnitude <= maxDistance * 0.65f)
+                    return candidate;
+            }
+
+            return average;
+        }
+
+        private static Rect CalculateBounds(Dictionary<long, UvPointAccumulator> points)
+        {
+            float minX = float.MaxValue;
+            float minY = float.MaxValue;
+            float maxX = float.MinValue;
+            float maxY = float.MinValue;
+            foreach (var point in points.Values)
+            {
+                var uv = point.Average;
+                minX = Mathf.Min(minX, uv.x);
+                minY = Mathf.Min(minY, uv.y);
+                maxX = Mathf.Max(maxX, uv.x);
+                maxY = Mathf.Max(maxY, uv.y);
+            }
+
+            return Rect.MinMaxRect(minX, minY, maxX, maxY);
+        }
+
+        private static bool TryGetTriangleVertices(
+            IReadOnlyList<int> triangleIndices,
+            int start,
+            int vertexCount,
+            out int i0,
+            out int i1,
+            out int i2)
+        {
+            i0 = i1 = i2 = -1;
+            if (start < 0 || start + 2 >= triangleIndices.Count)
+                return false;
+
+            i0 = triangleIndices[start];
+            i1 = triangleIndices[start + 1];
+            i2 = triangleIndices[start + 2];
+            return i0 >= 0 && i0 < vertexCount &&
+                   i1 >= 0 && i1 < vertexCount &&
+                   i2 >= 0 && i2 < vertexCount;
+        }
+
+        private static void AddTriangleReference(Dictionary<long, List<int>> uvToTriangles, long uvKey, int triangleIndex)
+        {
+            if (!uvToTriangles.TryGetValue(uvKey, out var triangles))
+            {
+                triangles = new List<int>();
+                uvToTriangles[uvKey] = triangles;
+            }
+
+            if (!triangles.Contains(triangleIndex))
+                triangles.Add(triangleIndex);
+        }
+
+        private static void EnqueueUvNeighbors(
+            Dictionary<long, List<int>> uvToTriangles,
+            HashSet<int> visited,
+            Queue<int> queue,
+            long uvKey)
+        {
+            if (!uvToTriangles.TryGetValue(uvKey, out var neighbors))
+                return;
+
+            foreach (int neighbor in neighbors)
+                if (visited.Add(neighbor))
+                    queue.Enqueue(neighbor);
+        }
+
+        private static void AddPoint(Dictionary<long, UvPointAccumulator> points, Vector2 uv)
+        {
+            long key = QuantizeUV(uv);
+            if (!points.TryGetValue(key, out var point))
+            {
+                point = new UvPointAccumulator();
+                points[key] = point;
+            }
+
+            point.Add(uv);
+        }
+
+        private static void AddEdge(
+            Dictionary<(long, long), UvEdgeAccumulator> edgeCounts,
+            Dictionary<long, UvPointAccumulator> points,
+            long keyA,
+            long keyB)
+        {
+            if (keyA == keyB)
+                return;
+
+            var key = keyA < keyB ? (keyA, keyB) : (keyB, keyA);
+            if (!edgeCounts.TryGetValue(key, out var edge))
+            {
+                edge = new UvEdgeAccumulator
+                {
+                    A = points[key.Item1].Average,
+                    B = points[key.Item2].Average
+                };
+                edgeCounts[key] = edge;
+            }
+
+            edge.Count++;
+        }
+
+        internal sealed class CircularUvIsland
+        {
+            private const float Epsilon = 1e-6f;
+            private readonly Vector2 _center;
+            private readonly Rect _bounds;
+            private readonly List<CircularUvEdge> _boundaryEdges;
+            private readonly List<Vector2> _boundaryPoints;
+
+            internal CircularUvIsland(
+                Vector2 center,
+                Rect bounds,
+                List<CircularUvEdge> boundaryEdges,
+                List<Vector2> boundaryPoints)
+            {
+                _center = center;
+                _bounds = bounds;
+                _boundaryEdges = boundaryEdges;
+                _boundaryPoints = boundaryPoints;
+            }
+
+            internal Vector2 Remap(Vector2 uv)
+            {
+                var delta = uv - _center;
+                float distance = delta.magnitude;
+                if (distance <= Epsilon)
+                    return new Vector2(0.5f, 0.5f);
+
+                var direction = delta / distance;
+                float boundaryRadius = FindBoundaryRadius(direction);
+                if (boundaryRadius <= Epsilon)
+                    return RemapByBounds(uv);
+
+                float normalizedRadius = Mathf.Clamp01(distance / boundaryRadius);
+                return new Vector2(
+                    Mathf.Clamp01(0.5f + direction.x * normalizedRadius * 0.5f),
+                    Mathf.Clamp01(0.5f + direction.y * normalizedRadius * 0.5f));
+            }
+
+            private float FindBoundaryRadius(Vector2 direction)
+            {
+                float nearest = float.MaxValue;
+                foreach (var edge in _boundaryEdges)
+                {
+                    if (TryRaySegmentIntersection(_center, direction, edge, out float distance))
+                        nearest = Mathf.Min(nearest, distance);
+                }
+
+                if (nearest < float.MaxValue)
+                    return nearest;
+
+                return FindNearestBoundaryPointRadius(direction);
+            }
+
+            private float FindNearestBoundaryPointRadius(Vector2 direction)
+            {
+                float bestDot = -1f;
+                float radius = 0f;
+                foreach (var point in _boundaryPoints)
+                {
+                    var delta = point - _center;
+                    float distance = delta.magnitude;
+                    if (distance <= Epsilon)
+                        continue;
+
+                    float dot = Vector2.Dot(delta / distance, direction);
+                    if (dot <= bestDot)
+                        continue;
+
+                    bestDot = dot;
+                    radius = distance;
+                }
+
+                if (bestDot > 0.95f && radius > Epsilon)
+                    return radius;
+
+                return FindBoundsRadius(direction);
+            }
+
+            private float FindBoundsRadius(Vector2 direction)
+            {
+                float radius = float.MaxValue;
+                if (Mathf.Abs(direction.x) > Epsilon)
+                {
+                    float x = direction.x > 0f ? _bounds.xMax : _bounds.xMin;
+                    float tx = (x - _center.x) / direction.x;
+                    if (tx > Epsilon)
+                        radius = Mathf.Min(radius, tx);
+                }
+
+                if (Mathf.Abs(direction.y) > Epsilon)
+                {
+                    float y = direction.y > 0f ? _bounds.yMax : _bounds.yMin;
+                    float ty = (y - _center.y) / direction.y;
+                    if (ty > Epsilon)
+                        radius = Mathf.Min(radius, ty);
+                }
+
+                if (radius < float.MaxValue)
+                    return radius;
+
+                return Mathf.Max(_bounds.width, _bounds.height) * 0.5f;
+            }
+
+            private Vector2 RemapByBounds(Vector2 uv)
+            {
+                return new Vector2(
+                    Mathf.Clamp01(Mathf.InverseLerp(_bounds.xMin, _bounds.xMax, uv.x)),
+                    Mathf.Clamp01(Mathf.InverseLerp(_bounds.yMin, _bounds.yMax, uv.y)));
+            }
+
+            private static bool TryRaySegmentIntersection(
+                Vector2 origin,
+                Vector2 direction,
+                CircularUvEdge edge,
+                out float distance)
+            {
+                distance = 0f;
+                var segment = edge.B - edge.A;
+                var relative = edge.A - origin;
+                float denominator = Cross(direction, segment);
+                if (Mathf.Abs(denominator) <= Epsilon)
+                {
+                    if (Mathf.Abs(Cross(relative, direction)) > 1e-5f)
+                        return false;
+
+                    float t0 = Vector2.Dot(edge.A - origin, direction);
+                    float t1 = Vector2.Dot(edge.B - origin, direction);
+                    distance = Mathf.Max(t0, t1);
+                    return distance > Epsilon;
+                }
+
+                float t = Cross(relative, segment) / denominator;
+                float u = Cross(relative, direction) / denominator;
+                if (t <= Epsilon || u < -1e-4f || u > 1f + 1e-4f)
+                    return false;
+
+                distance = t;
+                return true;
+            }
+        }
+
+        private sealed class UvPointAccumulator
+        {
+            private Vector2 _sum;
+            private int _count;
+
+            internal Vector2 Average => _count > 0 ? _sum / _count : Vector2.zero;
+
+            internal void Add(Vector2 uv)
+            {
+                _sum += uv;
+                _count++;
+            }
+        }
+
+        private sealed class UvEdgeAccumulator
+        {
+            internal Vector2 A;
+            internal Vector2 B;
+            internal int Count;
+        }
+
+        internal readonly struct CircularUvEdge
+        {
+            internal readonly Vector2 A;
+            internal readonly Vector2 B;
+
+            internal CircularUvEdge(Vector2 a, Vector2 b)
+            {
+                A = a;
+                B = b;
+            }
+        }
+
+        private static float Cross(Vector2 a, Vector2 b) => a.x * b.y - a.y * b.x;
 
         private static bool IsTriangleInUVRect(Vector2[] uvs, int i0, int i1, int i2, Rect rect)
             => UVInRect(uvs[i0], rect) || UVInRect(uvs[i1], rect) || UVInRect(uvs[i2], rect);

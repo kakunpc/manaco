@@ -80,7 +80,7 @@ namespace com.kakunvr.manaco.Editor
             if (baseTexture == null || eyeTexture == null)
                 return null;
 
-            var selectedTriangles = CollectSelectedTriangles(region, mesh, out var transformedBounds, targetMaterial);
+            var selectedTriangles = CollectSelectedTriangles(region, mesh, targetMaterial);
             if (selectedTriangles.Count == 0)
                 return null;
 
@@ -114,8 +114,7 @@ namespace com.kakunvr.manaco.Editor
                     eyePixels,
                     eyeWidth,
                     eyeHeight,
-                    triangle,
-                    transformedBounds);
+                    triangle);
             }
 
             output.SetPixels(basePixels);
@@ -134,14 +133,12 @@ namespace com.kakunvr.manaco.Editor
             return ReadTexture(material.GetTexture("_MainTex"), name);
         }
 
-        private static List<Vector2[]> CollectSelectedTriangles(
+        private static List<ManacoPass.CircularUvTriangle> CollectSelectedTriangles(
             Manaco.EyeRegion region,
             Mesh mesh,
-            out Rect transformedBounds,
             Material targetMaterial)
         {
-            transformedBounds = default;
-            var triangles = new List<Vector2[]>();
+            var triangles = new List<ManacoPass.CircularUvTriangle>();
             if (mesh == null)
                 return triangles;
 
@@ -169,11 +166,11 @@ namespace com.kakunvr.manaco.Editor
             var meshTriangles = mesh.GetTriangles(subMeshIndex);
             var textureScale = targetMaterial.GetTextureScale("_MainTex");
             var textureOffset = targetMaterial.GetTextureOffset("_MainTex");
+            var transformedUvs = new Vector2[uvs.Length];
+            for (int i = 0; i < uvs.Length; i++)
+                transformedUvs[i] = TransformUv(uvs[i], textureScale, textureOffset);
 
-            float minX = float.MaxValue;
-            float minY = float.MaxValue;
-            float maxX = float.MinValue;
-            float maxY = float.MinValue;
+            var selectedTriangleIndices = new List<int>();
 
             for (int i = 0; i < meshTriangles.Length; i += 3)
             {
@@ -185,22 +182,15 @@ namespace com.kakunvr.manaco.Editor
                     !selectedUVPoints.Contains(ManacoPass.QuantizeUV(uvs[i2])))
                     continue;
 
-                var uv0 = TransformUv(uvs[i0], textureScale, textureOffset);
-                var uv1 = TransformUv(uvs[i1], textureScale, textureOffset);
-                var uv2 = TransformUv(uvs[i2], textureScale, textureOffset);
-                triangles.Add(new[] { uv0, uv1, uv2 });
-
-                minX = Mathf.Min(minX, uv0.x, uv1.x, uv2.x);
-                minY = Mathf.Min(minY, uv0.y, uv1.y, uv2.y);
-                maxX = Mathf.Max(maxX, uv0.x, uv1.x, uv2.x);
-                maxY = Mathf.Max(maxY, uv0.y, uv1.y, uv2.y);
+                selectedTriangleIndices.Add(i0);
+                selectedTriangleIndices.Add(i1);
+                selectedTriangleIndices.Add(i2);
             }
 
-            if (triangles.Count == 0)
+            if (selectedTriangleIndices.Count == 0)
                 return triangles;
 
-            transformedBounds = Rect.MinMaxRect(minX, minY, maxX, maxY);
-            return triangles;
+            return ManacoPass.BuildCircularUvMapping(transformedUvs, selectedTriangleIndices).Triangles;
         }
 
         private static Vector2 TransformUv(Vector2 uv, Vector2 scale, Vector2 offset)
@@ -245,15 +235,11 @@ namespace com.kakunvr.manaco.Editor
             Color[] eyePixels,
             int eyeWidth,
             int eyeHeight,
-            IReadOnlyList<Vector2> triangle,
-            Rect bounds)
+            ManacoPass.CircularUvTriangle triangle)
         {
-            if (bounds.width <= 0f || bounds.height <= 0f)
-                return;
-
-            var p0 = new Vector2(triangle[0].x * (baseWidth - 1), triangle[0].y * (baseHeight - 1));
-            var p1 = new Vector2(triangle[1].x * (baseWidth - 1), triangle[1].y * (baseHeight - 1));
-            var p2 = new Vector2(triangle[2].x * (baseWidth - 1), triangle[2].y * (baseHeight - 1));
+            var p0 = new Vector2(triangle.Uv0.x * (baseWidth - 1), triangle.Uv0.y * (baseHeight - 1));
+            var p1 = new Vector2(triangle.Uv1.x * (baseWidth - 1), triangle.Uv1.y * (baseHeight - 1));
+            var p2 = new Vector2(triangle.Uv2.x * (baseWidth - 1), triangle.Uv2.y * (baseHeight - 1));
 
             int minX = Mathf.Clamp(Mathf.FloorToInt(Mathf.Min(p0.x, p1.x, p2.x)), 0, baseWidth - 1);
             int minY = Mathf.Clamp(Mathf.FloorToInt(Mathf.Min(p0.y, p1.y, p2.y)), 0, baseHeight - 1);
@@ -263,6 +249,7 @@ namespace com.kakunvr.manaco.Editor
             float area = Edge(p0, p1, p2);
             if (Mathf.Approximately(area, 0f))
                 return;
+            float inverseArea = 1f / area;
 
             for (int y = minY; y <= maxY; y++)
             {
@@ -279,12 +266,7 @@ namespace com.kakunvr.manaco.Editor
                     if (!inside)
                         continue;
 
-                    var uv = new Vector2(
-                        Mathf.Lerp(0f, 1f, x / (float)Mathf.Max(1, baseWidth - 1)),
-                        Mathf.Lerp(0f, 1f, y / (float)Mathf.Max(1, baseHeight - 1)));
-                    var eyeUv = new Vector2(
-                        Mathf.InverseLerp(bounds.xMin, bounds.xMax, uv.x),
-                        Mathf.InverseLerp(bounds.yMin, bounds.yMax, uv.y));
+                    var eyeUv = triangle.InterpolateRemapped(w0, w1, w2, inverseArea);
                     var eyeColor = SampleBilinear(eyePixels, eyeWidth, eyeHeight, eyeUv);
 
                     int pixelIndex = y * baseWidth + x;
