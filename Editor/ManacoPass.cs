@@ -34,6 +34,7 @@ namespace com.kakunvr.manaco
             var fallbackMaterialCache = new Dictionary<(Material material, int resolution, bool forceRender), Material>();
             var lightweightMaterialCache = new Dictionary<(SkinnedMeshRenderer renderer, int materialIndex), Material>();
             bool useLightweightMode = IsLightweightModeEnabled(component);
+            var uvRemapMode = GetEffectiveUvRemapMode(component);
 
             foreach (var region in component.eyeRegions.OrderBy(GetLightweightPriority))
             {
@@ -58,11 +59,12 @@ namespace com.kakunvr.manaco
                         region,
                         region.targetRenderer,
                         eyeMaterial,
-                        lightweightMaterialCache);
+                        lightweightMaterialCache,
+                        uvRemapMode);
                 }
                 else
                 {
-                    ApplyEyeSubMesh(region, region.targetRenderer, eyeMaterial);
+                    ApplyEyeSubMesh(region, region.targetRenderer, eyeMaterial, uvRemapMode: uvRemapMode);
                 }
             }
             UnityEngine.Object.DestroyImmediate(component);
@@ -83,6 +85,14 @@ namespace com.kakunvr.manaco
                 Manaco.EyeType.RightPupil => 1,
                 _ => 0,
             };
+        }
+
+        internal static Manaco.EyeUvRemapMode GetEffectiveUvRemapMode(Manaco component)
+        {
+            if (component == null || component.mode == Manaco.ManacoMode.CopyEyeFromAvatar)
+                return Manaco.EyeUvRemapMode.Circular;
+
+            return component.eyeUvRemapMode;
         }
 
         internal static Material ResolveEyeMaterial(
@@ -155,7 +165,8 @@ namespace com.kakunvr.manaco
             Material overrideMaterial = null,
             bool preserveBlendShapes = true,
             Mesh bakedShapeMesh = null,
-            PreviewMeshSnapshot previewMeshSnapshot = null)
+            PreviewMeshSnapshot previewMeshSnapshot = null,
+            Manaco.EyeUvRemapMode uvRemapMode = Manaco.EyeUvRemapMode.Circular)
         {
             var originalMesh = smr.sharedMesh;
             if (originalMesh == null)
@@ -266,7 +277,9 @@ namespace com.kakunvr.manaco
             }
 
             var eyeVertSet = new HashSet<int>(eyeTriangles);
-            var circularUvMapping = BuildCircularUvMapping(uvs, eyeTriangles);
+            var uvMapping = uvRemapMode == Manaco.EyeUvRemapMode.Legacy01
+                ? BuildLegacy01UvMapping(uvs, eyeVertSet, eyeTriangles)
+                : BuildCircularUvMapping(uvs, eyeTriangles);
 
             // ---- ブレンドシェイプを頂点数変更前に保存 ----
             if (!preserveBlendShapes && mesh.blendShapeCount > 0)
@@ -322,8 +335,8 @@ namespace com.kakunvr.manaco
                 if (uv3.Count      > vi) uv3.Add(uv3[vi]);
                 if (uv4.Count      > vi) uv4.Add(uv4[vi]);
 
-                uvList.Add(circularUvMapping.TryGetVertexUv(vi, out var circularUv)
-                    ? circularUv
+                uvList.Add(uvMapping.TryGetVertexUv(vi, out var remappedUv)
+                    ? remappedUv
                     : new Vector2(0.5f, 0.5f));
             }
 
@@ -681,13 +694,24 @@ namespace com.kakunvr.manaco
             internal readonly Vector2 RemappedUv2;
 
             internal CircularUvTriangle(Vector2 uv0, Vector2 uv1, Vector2 uv2, CircularUvIsland island)
+                : this(uv0, uv1, uv2, island.Remap(uv0), island.Remap(uv1), island.Remap(uv2))
+            {
+            }
+
+            internal CircularUvTriangle(
+                Vector2 uv0,
+                Vector2 uv1,
+                Vector2 uv2,
+                Vector2 remappedUv0,
+                Vector2 remappedUv1,
+                Vector2 remappedUv2)
             {
                 Uv0 = uv0;
                 Uv1 = uv1;
                 Uv2 = uv2;
-                RemappedUv0 = island.Remap(uv0);
-                RemappedUv1 = island.Remap(uv1);
-                RemappedUv2 = island.Remap(uv2);
+                RemappedUv0 = remappedUv0;
+                RemappedUv1 = remappedUv1;
+                RemappedUv2 = remappedUv2;
             }
 
             internal Vector2 InterpolateRemapped(float w0, float w1, float w2, float inverseArea)
@@ -697,6 +721,14 @@ namespace com.kakunvr.manaco
                 float b2 = w2 * inverseArea;
                 var uv = RemappedUv0 * b0 + RemappedUv1 * b1 + RemappedUv2 * b2;
                 return new Vector2(Mathf.Clamp01(uv.x), Mathf.Clamp01(uv.y));
+            }
+
+            internal Vector2 InterpolateOriginal(float w0, float w1, float w2, float inverseArea)
+            {
+                float b0 = w0 * inverseArea;
+                float b1 = w1 * inverseArea;
+                float b2 = w2 * inverseArea;
+                return Uv0 * b0 + Uv1 * b1 + Uv2 * b2;
             }
         }
 
@@ -727,6 +759,71 @@ namespace com.kakunvr.manaco
             }
 
             return mapping;
+        }
+
+        internal static CircularUvMapping BuildLegacy01UvMapping(
+            Vector2[] uvs,
+            IReadOnlyCollection<int> vertexIndices,
+            IReadOnlyList<int> triangleIndices)
+        {
+            var mapping = new CircularUvMapping();
+            if (uvs == null || vertexIndices == null || vertexIndices.Count == 0)
+                return mapping;
+
+            float minU = float.MaxValue;
+            float minV = float.MaxValue;
+            float maxU = float.MinValue;
+            float maxV = float.MinValue;
+            foreach (int vertexIndex in vertexIndices)
+            {
+                if (vertexIndex < 0 || vertexIndex >= uvs.Length)
+                    continue;
+
+                var uv = uvs[vertexIndex];
+                minU = Mathf.Min(minU, uv.x);
+                minV = Mathf.Min(minV, uv.y);
+                maxU = Mathf.Max(maxU, uv.x);
+                maxV = Mathf.Max(maxV, uv.y);
+            }
+
+            if (minU == float.MaxValue)
+                return mapping;
+
+            float rangeU = Mathf.Max(maxU - minU, 1e-5f);
+            float rangeV = Mathf.Max(maxV - minV, 1e-5f);
+            foreach (int vertexIndex in vertexIndices)
+            {
+                if (vertexIndex < 0 || vertexIndex >= uvs.Length)
+                    continue;
+
+                mapping.VertexUvs[vertexIndex] = RemapLegacy01(uvs[vertexIndex], minU, minV, rangeU, rangeV);
+            }
+
+            if (triangleIndices == null)
+                return mapping;
+
+            for (int i = 0; i < triangleIndices.Count; i += 3)
+            {
+                if (!TryGetTriangleVertices(triangleIndices, i, uvs.Length, out int i0, out int i1, out int i2))
+                    continue;
+
+                mapping.Triangles.Add(new CircularUvTriangle(
+                    uvs[i0],
+                    uvs[i1],
+                    uvs[i2],
+                    mapping.VertexUvs.TryGetValue(i0, out var remappedUv0) ? remappedUv0 : new Vector2(0.5f, 0.5f),
+                    mapping.VertexUvs.TryGetValue(i1, out var remappedUv1) ? remappedUv1 : new Vector2(0.5f, 0.5f),
+                    mapping.VertexUvs.TryGetValue(i2, out var remappedUv2) ? remappedUv2 : new Vector2(0.5f, 0.5f)));
+            }
+
+            return mapping;
+        }
+
+        private static Vector2 RemapLegacy01(Vector2 uv, float minU, float minV, float rangeU, float rangeV)
+        {
+            return new Vector2(
+                Mathf.Clamp01((uv.x - minU) / rangeU),
+                Mathf.Clamp01((uv.y - minV) / rangeV));
         }
 
         private static List<List<int>> SplitCircularUvComponents(Vector2[] uvs, IReadOnlyList<int> triangleIndices)

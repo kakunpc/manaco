@@ -141,7 +141,7 @@ namespace com.kakunvr.manaco.Editor
             public Mesh OriginalMesh;
             public Material[] OriginalMaterials;
             public Material[] CurrentPreviewMaterials;
-            public readonly List<(Manaco.EyeRegion Region, Material EyeMaterial)> Assignments = new();
+            public readonly List<(Manaco.EyeRegion Region, Material EyeMaterial, Manaco.EyeUvRemapMode UvRemapMode)> Assignments = new();
             public bool UseFastPreview;
             public bool UseLightweightMode;
             public Mesh CurrentPreviewMesh;
@@ -168,6 +168,7 @@ namespace com.kakunvr.manaco.Editor
             foreach (var comp in comps)
             {
                 bool useLightweightPreview = IsLightweightModeEnabled(comp);
+                var uvRemapMode = ManacoPass.GetEffectiveUvRemapMode(comp);
                 foreach (var region in comp.eyeRegions.OrderBy(GetLightweightPriority))
                 {
                     if (region.targetRenderer == null) continue;
@@ -193,7 +194,7 @@ namespace com.kakunvr.manaco.Editor
                     }
 
                     modification.UseLightweightMode |= useLightweightPreview;
-                    modification.Assignments.Add((region, eyeMat));
+                    modification.Assignments.Add((region, eyeMat, uvRemapMode));
                 }
             }
 
@@ -278,7 +279,8 @@ namespace com.kakunvr.manaco.Editor
                     assignment.Region,
                     proxySmr,
                     assignment.EyeMaterial,
-                    preserveBlendShapes: true);
+                    preserveBlendShapes: true,
+                    uvRemapMode: assignment.UvRemapMode);
 
                 if (newMesh == null)
                     continue;
@@ -334,7 +336,8 @@ namespace com.kakunvr.manaco.Editor
                 assignment.EyeMaterial,
                 preserveBlendShapes: false,
                 bakedShapeMesh: bakedShapeMesh,
-                previewMeshSnapshot: previewMeshSnapshot);
+                previewMeshSnapshot: previewMeshSnapshot,
+                uvRemapMode: assignment.UvRemapMode);
 
             if (newMesh != null)
             {
@@ -365,6 +368,7 @@ namespace com.kakunvr.manaco.Editor
                     proxySmr,
                     assignment.EyeMaterial,
                     materialCache,
+                    assignment.UvRemapMode,
                     _createdObjects);
             }
 

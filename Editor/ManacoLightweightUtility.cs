@@ -11,6 +11,7 @@ namespace com.kakunvr.manaco.Editor
             SkinnedMeshRenderer smr,
             Material eyeMaterial,
             Dictionary<(SkinnedMeshRenderer renderer, int materialIndex), Material> materialCache,
+            Manaco.EyeUvRemapMode uvRemapMode = Manaco.EyeUvRemapMode.Circular,
             ICollection<UnityEngine.Object> createdObjects = null)
         {
             if (smr == null || eyeMaterial == null)
@@ -28,7 +29,7 @@ namespace com.kakunvr.manaco.Editor
             if (baseMaterial == null)
                 return false;
 
-            var compositedTexture = CreateCompositedMainTexture(region, smr.sharedMesh, baseMaterial, eyeMaterial);
+            var compositedTexture = CreateCompositedMainTexture(region, smr.sharedMesh, baseMaterial, eyeMaterial, uvRemapMode);
             if (compositedTexture == null)
                 return false;
 
@@ -53,7 +54,8 @@ namespace com.kakunvr.manaco.Editor
             Manaco.EyeRegion region,
             Mesh mesh,
             Material targetMaterial,
-            Material eyeMaterial)
+            Material eyeMaterial,
+            Manaco.EyeUvRemapMode uvRemapMode = Manaco.EyeUvRemapMode.Circular)
         {
             if (mesh == null || targetMaterial == null || eyeMaterial == null)
                 return null;
@@ -61,7 +63,7 @@ namespace com.kakunvr.manaco.Editor
                 return null;
 
             var baseTexture = targetMaterial.GetTexture("_MainTex");
-            return CreateCompositedMainTexture(region, mesh, targetMaterial, baseTexture, eyeMaterial);
+            return CreateCompositedMainTexture(region, mesh, targetMaterial, baseTexture, eyeMaterial, uvRemapMode);
         }
 
         internal static Texture2D CreateCompositedMainTexture(
@@ -69,7 +71,8 @@ namespace com.kakunvr.manaco.Editor
             Mesh mesh,
             Material targetMaterial,
             Texture baseTexture,
-            Material eyeMaterial)
+            Material eyeMaterial,
+            Manaco.EyeUvRemapMode uvRemapMode = Manaco.EyeUvRemapMode.Circular)
         {
             if (mesh == null || targetMaterial == null || baseTexture == null || eyeMaterial == null)
                 return null;
@@ -80,7 +83,7 @@ namespace com.kakunvr.manaco.Editor
             if (baseTexture == null || eyeTexture == null)
                 return null;
 
-            var selectedTriangles = CollectSelectedTriangles(region, mesh, targetMaterial);
+            var selectedTriangles = CollectSelectedTriangles(region, mesh, targetMaterial, uvRemapMode);
             if (selectedTriangles.Count == 0)
                 return null;
 
@@ -136,7 +139,8 @@ namespace com.kakunvr.manaco.Editor
         private static List<ManacoPass.CircularUvTriangle> CollectSelectedTriangles(
             Manaco.EyeRegion region,
             Mesh mesh,
-            Material targetMaterial)
+            Material targetMaterial,
+            Manaco.EyeUvRemapMode uvRemapMode)
         {
             var triangles = new List<ManacoPass.CircularUvTriangle>();
             if (mesh == null)
@@ -189,6 +193,12 @@ namespace com.kakunvr.manaco.Editor
 
             if (selectedTriangleIndices.Count == 0)
                 return triangles;
+
+            if (uvRemapMode == Manaco.EyeUvRemapMode.Legacy01)
+                return ManacoPass.BuildLegacy01UvMapping(
+                    transformedUvs,
+                    new HashSet<int>(selectedTriangleIndices),
+                    selectedTriangleIndices).Triangles;
 
             return ManacoPass.BuildCircularUvMapping(transformedUvs, selectedTriangleIndices).Triangles;
         }
