@@ -5,7 +5,7 @@ using VRC.SDKBase;
 
 namespace com.kakunvr.manaco
 {
-    [AddComponentMenu("ちゃんとみる/Manaco")]
+    [AddComponentMenu("ちゃとらとりー/Manaco")]
     [DisallowMultipleComponent]
     public class Manaco : MonoBehaviour, IEditorOnly
     {
@@ -21,6 +21,12 @@ namespace com.kakunvr.manaco
         {
             EyeMaterialAssignment,
             CopyEyeFromAvatar
+        }
+
+        public enum EyeUvRemapMode
+        {
+            Circular,
+            Legacy01
         }
 
         [Serializable]
@@ -83,6 +89,9 @@ namespace com.kakunvr.manaco
 
         [Tooltip("Resolution used to render the eye texture for lightweight mode.")]
         public int lightweightTextureResolution = 512;
+
+        [Tooltip("目のUVを正方形テクスチャへ変換する方式")]
+        public EyeUvRemapMode eyeUvRemapMode = EyeUvRemapMode.Circular;
 
         [HideInInspector]
         public ManacoPreset appliedAvatarPreset;

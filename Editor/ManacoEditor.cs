@@ -13,6 +13,7 @@ namespace com.kakunvr.manaco.Editor
         private SerializedProperty _useNdmfPreviewProp;
         private SerializedProperty _useLightweightModeProp;
         private SerializedProperty _lightweightTextureResolutionProp;
+        private SerializedProperty _eyeUvRemapModeProp;
         private SerializedProperty _modeProp;
         private SerializedProperty _sourceAvatarPrefabProp;
         private SerializedProperty _tutorialPageProp;
@@ -40,6 +41,7 @@ namespace com.kakunvr.manaco.Editor
             _useNdmfPreviewProp = serializedObject.FindProperty("useNdmfPreview");
             _useLightweightModeProp = serializedObject.FindProperty("useLightweightMode");
             _lightweightTextureResolutionProp = serializedObject.FindProperty("lightweightTextureResolution");
+            _eyeUvRemapModeProp = serializedObject.FindProperty("eyeUvRemapMode");
             _modeProp = serializedObject.FindProperty("mode");
             _sourceAvatarPrefabProp = serializedObject.FindProperty("sourceAvatarPrefab");
             _tutorialPageProp = serializedObject.FindProperty("tutorialPage");
@@ -144,6 +146,9 @@ namespace com.kakunvr.manaco.Editor
             }
 
             EditorGUILayout.Space(6f);
+            DrawUvRemapAdvancedOption();
+
+            EditorGUILayout.Space(6f);
             for (int i = 0; i < _eyeRegionsProp.arraySize; i++)
             {
                 bool deleted = ((Manaco.ManacoMode)_modeProp.enumValueIndex == Manaco.ManacoMode.CopyEyeFromAvatar)
@@ -160,6 +165,28 @@ namespace com.kakunvr.manaco.Editor
             EditorGUILayout.Space(4f);
             if (GUILayout.Button(ManacoLocale.T("Button.Add")))
                 _eyeRegionsProp.arraySize++;
+        }
+
+        private void DrawUvRemapAdvancedOption()
+        {
+            bool isCopyMode = (Manaco.ManacoMode)_modeProp.enumValueIndex == Manaco.ManacoMode.CopyEyeFromAvatar;
+            if (isCopyMode)
+            {
+                EditorGUILayout.HelpBox(ManacoLocale.T("Message.CopyModeCircularUvOnly"), MessageType.Info);
+                return;
+            }
+
+            bool useLegacy01 = _eyeUvRemapModeProp.enumValueIndex == (int)Manaco.EyeUvRemapMode.Legacy01;
+            EditorGUI.BeginChangeCheck();
+            useLegacy01 = EditorGUILayout.Toggle(
+                new GUIContent(ManacoLocale.T("Toggle.Legacy01UvRemap"), ManacoLocale.T("Tooltip.Legacy01UvRemap")),
+                useLegacy01);
+            if (EditorGUI.EndChangeCheck())
+            {
+                _eyeUvRemapModeProp.enumValueIndex = useLegacy01
+                    ? (int)Manaco.EyeUvRemapMode.Legacy01
+                    : (int)Manaco.EyeUvRemapMode.Circular;
+            }
         }
 
         private void DrawModeField()
@@ -1025,6 +1052,7 @@ namespace com.kakunvr.manaco.Editor
         {
             var fallbackMaterialCache = new Dictionary<(Material material, int resolution, bool forceRender), Material>();
             var outputs = new Dictionary<(SkinnedMeshRenderer renderer, int materialIndex), ExportedTexture>();
+            var uvRemapMode = ManacoPass.GetEffectiveUvRemapMode(component);
 
             foreach (var region in component.eyeRegions.OrderBy(GetPriority))
             {
@@ -1068,7 +1096,8 @@ namespace com.kakunvr.manaco.Editor
                     region.targetRenderer.sharedMesh,
                     export.BaseMaterial,
                     export.Texture,
-                    eyeMaterial);
+                    eyeMaterial,
+                    uvRemapMode);
                 if (compositedTexture == null)
                     continue;
 

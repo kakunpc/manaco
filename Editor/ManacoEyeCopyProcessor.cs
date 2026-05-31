@@ -69,7 +69,7 @@ namespace com.kakunvr.manaco.Editor
 
             int sourceSubMeshIndex = Mathf.Clamp(region.sourceMaterialIndex, 0, sourceMesh.subMeshCount - 1);
             var sourceTriangles = sourceMesh.GetTriangles(sourceSubMeshIndex);
-            var eyeVertexSet = new HashSet<int>();
+            var sourceEyeTriangles = new List<int>();
             for (int i = 0; i < sourceTriangles.Length; i += 3)
             {
                 int i0 = sourceTriangles[i];
@@ -81,28 +81,15 @@ namespace com.kakunvr.manaco.Editor
                     !selectedUVPoints.Contains(ManacoPass.QuantizeUV(uvs[i2])))
                     continue;
 
-                eyeVertexSet.Add(i0);
-                eyeVertexSet.Add(i1);
-                eyeVertexSet.Add(i2);
+                sourceEyeTriangles.Add(i0);
+                sourceEyeTriangles.Add(i1);
+                sourceEyeTriangles.Add(i2);
             }
 
-            if (eyeVertexSet.Count == 0)
+            if (sourceEyeTriangles.Count == 0)
             {
                 Debug.LogWarning("[Manaco] CopyEyeFromAvatar: no eye vertices matched the selected UV island.");
                 return null;
-            }
-
-            float minU = float.MaxValue;
-            float minV = float.MaxValue;
-            float maxU = float.MinValue;
-            float maxV = float.MinValue;
-            foreach (int vertexIndex in eyeVertexSet)
-            {
-                var uv = uvs[vertexIndex];
-                minU = Mathf.Min(minU, uv.x);
-                minV = Mathf.Min(minV, uv.y);
-                maxU = Mathf.Max(maxU, uv.x);
-                maxV = Mathf.Max(maxV, uv.y);
             }
 
             int resolution = Mathf.Clamp(region.extractTextureResolution, 64, 2048);
@@ -129,12 +116,12 @@ namespace com.kakunvr.manaco.Editor
                     offset = sourceMaterial.mainTextureOffset;
                 }
 
-                var extracted = ExtractTextureRegion(
+                var extracted = ExtractCircularTextureRegion(
                     sourceTexture,
-                    minU * scale.x + offset.x,
-                    minV * scale.y + offset.y,
-                    maxU * scale.x + offset.x,
-                    maxV * scale.y + offset.y,
+                    uvs,
+                    sourceEyeTriangles,
+                    scale,
+                    offset,
                     resolution);
                 if (extracted != null)
                     extractedTextures[propertyName] = extracted;
@@ -145,12 +132,12 @@ namespace com.kakunvr.manaco.Editor
                 mainTexture = explicitMainTexture;
             else if (sourceMaterial.mainTexture != null)
             {
-                mainTexture = ExtractTextureRegion(
+                mainTexture = ExtractCircularTextureRegion(
                     sourceMaterial.mainTexture,
-                    minU * sourceMaterial.mainTextureScale.x + sourceMaterial.mainTextureOffset.x,
-                    minV * sourceMaterial.mainTextureScale.y + sourceMaterial.mainTextureOffset.y,
-                    maxU * sourceMaterial.mainTextureScale.x + sourceMaterial.mainTextureOffset.x,
-                    maxV * sourceMaterial.mainTextureScale.y + sourceMaterial.mainTextureOffset.y,
+                    uvs,
+                    sourceEyeTriangles,
+                    sourceMaterial.mainTextureScale,
+                    sourceMaterial.mainTextureOffset,
                     resolution);
             }
 
@@ -180,43 +167,163 @@ namespace com.kakunvr.manaco.Editor
             return result;
         }
 
-        private static Texture2D ExtractTextureRegion(
+        private static Texture2D ExtractCircularTextureRegion(
             Texture source,
-            float minU,
-            float minV,
-            float maxU,
-            float maxV,
+            Vector2[] sourceUvs,
+            IReadOnlyList<int> sourceEyeTriangles,
+            Vector2 scale,
+            Vector2 offset,
             int resolution)
         {
-            float scaleU = maxU - minU;
-            float scaleV = maxV - minV;
-            if (Mathf.Approximately(scaleU, 0f) || Mathf.Approximately(scaleV, 0f))
+            if (source == null || sourceUvs == null || sourceEyeTriangles == null || sourceEyeTriangles.Count == 0)
                 return null;
 
-            var renderTexture = RenderTexture.GetTemporary(
-                resolution,
-                resolution,
-                0,
-                RenderTextureFormat.ARGB32,
-                RenderTextureReadWrite.sRGB);
-            renderTexture.filterMode = FilterMode.Bilinear;
+            var transformedUvs = new Vector2[sourceUvs.Length];
+            for (int i = 0; i < sourceUvs.Length; i++)
+                transformedUvs[i] = new Vector2(sourceUvs[i].x * scale.x + offset.x, sourceUvs[i].y * scale.y + offset.y);
 
-            Graphics.Blit(source, renderTexture, new Vector2(scaleU, scaleV), new Vector2(minU, minV));
+            var mapping = ManacoPass.BuildCircularUvMapping(transformedUvs, sourceEyeTriangles);
+            if (mapping.Triangles.Count == 0)
+                return null;
 
-            var previousActive = RenderTexture.active;
-            RenderTexture.active = renderTexture;
+            var readableSource = ReadTexture(source, source.name + "_Readable");
+            if (readableSource == null)
+                return null;
+
+            var sourcePixels = readableSource.GetPixels();
+            var outputPixels = Enumerable.Repeat(new Color(0f, 0f, 0f, 0f), resolution * resolution).ToArray();
+            foreach (var triangle in mapping.Triangles)
+                RasterizeExtractedTriangle(outputPixels, resolution, sourcePixels, readableSource.width, readableSource.height, triangle, source.wrapMode);
 
             var texture = new Texture2D(resolution, resolution, TextureFormat.RGBA32, false)
             {
                 name = source.name + "_EyeExtract"
             };
-            texture.ReadPixels(new Rect(0, 0, resolution, resolution), 0, 0);
+            texture.SetPixels(outputPixels);
             texture.Apply(true);
+
+            Object.DestroyImmediate(readableSource);
+            return texture;
+        }
+
+        private static Texture2D ReadTexture(Texture source, string name)
+        {
+            if (source == null)
+                return null;
+
+            var renderTexture = RenderTexture.GetTemporary(
+                Mathf.Max(1, source.width),
+                Mathf.Max(1, source.height),
+                0,
+                RenderTextureFormat.ARGB32,
+                RenderTextureReadWrite.sRGB);
+            renderTexture.filterMode = FilterMode.Bilinear;
+
+            Graphics.Blit(source, renderTexture);
+
+            var previousActive = RenderTexture.active;
+            RenderTexture.active = renderTexture;
+
+            var texture = new Texture2D(renderTexture.width, renderTexture.height, TextureFormat.RGBA32, false)
+            {
+                name = name
+            };
+            texture.ReadPixels(new Rect(0, 0, renderTexture.width, renderTexture.height), 0, 0);
+            texture.Apply(false, false);
 
             RenderTexture.active = previousActive;
             RenderTexture.ReleaseTemporary(renderTexture);
 
             return texture;
+        }
+
+        private static void RasterizeExtractedTriangle(
+            Color[] outputPixels,
+            int outputResolution,
+            Color[] sourcePixels,
+            int sourceWidth,
+            int sourceHeight,
+            ManacoPass.CircularUvTriangle triangle,
+            TextureWrapMode wrapMode)
+        {
+            var p0 = new Vector2(triangle.RemappedUv0.x * (outputResolution - 1), triangle.RemappedUv0.y * (outputResolution - 1));
+            var p1 = new Vector2(triangle.RemappedUv1.x * (outputResolution - 1), triangle.RemappedUv1.y * (outputResolution - 1));
+            var p2 = new Vector2(triangle.RemappedUv2.x * (outputResolution - 1), triangle.RemappedUv2.y * (outputResolution - 1));
+
+            int minX = Mathf.Clamp(Mathf.FloorToInt(Mathf.Min(p0.x, p1.x, p2.x)), 0, outputResolution - 1);
+            int minY = Mathf.Clamp(Mathf.FloorToInt(Mathf.Min(p0.y, p1.y, p2.y)), 0, outputResolution - 1);
+            int maxX = Mathf.Clamp(Mathf.CeilToInt(Mathf.Max(p0.x, p1.x, p2.x)), 0, outputResolution - 1);
+            int maxY = Mathf.Clamp(Mathf.CeilToInt(Mathf.Max(p0.y, p1.y, p2.y)), 0, outputResolution - 1);
+
+            float area = Edge(p0, p1, p2);
+            if (Mathf.Approximately(area, 0f))
+                return;
+            float inverseArea = 1f / area;
+
+            for (int y = minY; y <= maxY; y++)
+            {
+                for (int x = minX; x <= maxX; x++)
+                {
+                    var point = new Vector2(x + 0.5f, y + 0.5f);
+                    float w0 = Edge(p1, p2, point);
+                    float w1 = Edge(p2, p0, point);
+                    float w2 = Edge(p0, p1, point);
+
+                    bool inside = area > 0f
+                        ? (w0 >= 0f && w1 >= 0f && w2 >= 0f)
+                        : (w0 <= 0f && w1 <= 0f && w2 <= 0f);
+                    if (!inside)
+                        continue;
+
+                    var sourceUv = triangle.InterpolateOriginal(w0, w1, w2, inverseArea);
+                    outputPixels[y * outputResolution + x] = SampleBilinear(sourcePixels, sourceWidth, sourceHeight, sourceUv, wrapMode);
+                }
+            }
+        }
+
+        private static Color SampleBilinear(Color[] pixels, int width, int height, Vector2 uv, TextureWrapMode wrapMode)
+        {
+            float x = WrapUv(uv.x, wrapMode) * (width - 1);
+            float y = WrapUv(uv.y, wrapMode) * (height - 1);
+
+            int xMin = Mathf.FloorToInt(x);
+            int yMin = Mathf.FloorToInt(y);
+            int xMax = Mathf.Min(xMin + 1, width - 1);
+            int yMax = Mathf.Min(yMin + 1, height - 1);
+
+            float tx = x - xMin;
+            float ty = y - yMin;
+
+            var c00 = pixels[yMin * width + xMin];
+            var c10 = pixels[yMin * width + xMax];
+            var c01 = pixels[yMax * width + xMin];
+            var c11 = pixels[yMax * width + xMax];
+
+            var bottom = Color.Lerp(c00, c10, tx);
+            var top = Color.Lerp(c01, c11, tx);
+            return Color.Lerp(bottom, top, ty);
+        }
+
+        private static float WrapUv(float value, TextureWrapMode wrapMode)
+        {
+            return wrapMode switch
+            {
+                TextureWrapMode.Repeat => Mathf.Repeat(value, 1f),
+                TextureWrapMode.Mirror => Mirror(value),
+                TextureWrapMode.MirrorOnce => Mathf.Clamp01(Mirror(value)),
+                _ => Mathf.Clamp01(value),
+            };
+        }
+
+        private static float Mirror(float value)
+        {
+            float repeated = Mathf.Repeat(value, 2f);
+            return repeated <= 1f ? repeated : 2f - repeated;
+        }
+
+        private static float Edge(Vector2 a, Vector2 b, Vector2 c)
+        {
+            return (c.x - a.x) * (b.y - a.y) - (c.y - a.y) * (b.x - a.x);
         }
     }
 }
